@@ -36,6 +36,12 @@ const readingPage = document.getElementById('reading-page');
 const btnReading = document.getElementById('btn-reading');
 const btnIntuition = document.getElementById('btn-intuition');
 const btnBack = document.getElementById('btn-back');
+const shuffleHint = document.getElementById('shuffle-hint');
+const shuffleText = document.getElementById('shuffle-text');
+const shuffleComplete = document.getElementById('shuffle-complete');
+const gestureGuide = document.getElementById('gesture-guide');
+const guideStep1 = document.getElementById('guide-step-1');
+const guideStep2 = document.getElementById('guide-step-2');
 
 // 初始化数据
 async function initData() {
@@ -56,7 +62,7 @@ async function initScene() {
   scene = new TarotScene(container);
 
   starRing = new StarRing(allCards);
-  await new Promise(resolve => setTimeout(resolve, 200));
+  await starRing.ready; // 等待星环初始化完成（紫色粒子创建）
 
   scene.setStarRing(starRing);
   scene.start();
@@ -76,12 +82,21 @@ async function initScene() {
 
 // 初始化手势控制
 async function initGesture() {
-  if (gestureController) return;
+  // 如果已存在，重新初始化摄像头
+  if (gestureController) {
+    const success = await gestureController.init();
+    if (!success) {
+      console.warn('[main] 手势识别重新初始化失败');
+    }
+    return;
+  }
 
   gestureController = new GestureController({
     onCameraReady: () => {
       console.log('[main] 摄像头就绪');
       updateStepIndicator(1, 'active');
+      // 显示手势引导
+      gestureGuide.classList.add('visible');
     },
     onCameraError: (error) => {
       console.warn('[main] 摄像头不可用，降级到鼠标模式:', error.message);
@@ -98,6 +113,9 @@ async function initGesture() {
         isPalmActivated = true;
         starRing.setSpeed('fast');
         updateStepIndicator(2, 'active');
+        // 切换手势引导：第一步取消发光，第二步发光
+        guideStep1.classList.remove('active');
+        guideStep2.classList.add('active');
         console.log('[main] 手掌张开，已激活抓取资格');
       }
     },
@@ -187,6 +205,9 @@ async function grabCard() {
 
   isGrabbing = true;
 
+  // 隐藏手势引导（用户已成功抓取）
+  gestureGuide.classList.remove('visible');
+
   const cardData = pendingCard.cardData;
   const isReversed = pendingCard.isReversed;
   pendingCard = null; // 清空待抓取的牌
@@ -217,6 +238,10 @@ async function grabCard() {
     starRing.setSpeed('normal');
     // 重置抓取资格，需要重新张开手掌
     isPalmActivated = false;
+    // 重新显示手势引导，重置到第一步
+    guideStep1.classList.add('active');
+    guideStep2.classList.remove('active');
+    gestureGuide.classList.add('visible');
   } else {
     // 选满3张，激活揭示按钮并关闭摄像头
     activateRevealButton();
@@ -265,23 +290,42 @@ async function showReadingPage() {
   isPalmActivated = false;
   resetUI();
 
+  // 显示洗牌提示
+  shuffleHint.classList.add('visible');
+
   // 首次进入时初始化场景
   const isFirstInit = !scene;
   await initScene();
 
   // 重建星环（仅在非首次进入时，恢复被移除的卡牌）
   if (starRing && !isFirstInit) {
-    starRing.rebuild();
+    await starRing.rebuild();
   }
 
-  // 初始化手势识别
+  // 洗牌动画：紫色粒子旋转一会，然后分散显示牌
+  await new Promise(resolve => setTimeout(resolve, 1500));
+
+  if (starRing) {
+    await starRing.completeShuffleAnimation();
+  }
+
+  // 牌出现后：第一段文字消失，第二段文字出现
+  shuffleText.classList.add('fade-out');
+  shuffleComplete.classList.add('visible');
+
+  // 停留1s后隐藏整个提示
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  shuffleHint.classList.remove('visible');
+
+  // 牌显示后，再开启摄像头手势识别
   await initGesture();
 }
 
 // 重置 UI
 function resetUI() {
-  // 重置 3D 卡槽
+  // 重置 3D 卡槽和粒子汇聚
   if (cardAnimator) {
+    cardAnimator.cancelParticleConverge(); // 取消残留的粒子汇聚
     cardAnimator.resetSlots();
   }
   // 重置按钮
@@ -289,6 +333,15 @@ function resetUI() {
   btn.classList.remove('active');
   // 重置步骤
   updateStepIndicator(1, 'active');
+  // 隐藏引导提示
+  shuffleHint.classList.remove('visible');
+  gestureGuide.classList.remove('visible');
+  // 重置洗牌提示状态
+  shuffleText.classList.remove('fade-out');
+  shuffleComplete.classList.remove('visible');
+  // 重置手势引导状态
+  guideStep1.classList.add('active');
+  guideStep2.classList.remove('active');
 }
 
 // 返回主菜单
@@ -299,6 +352,11 @@ function showMainMenu() {
   // 停止手势识别
   if (gestureController) {
     gestureController.stop();
+  }
+
+  // 清理残留的粒子汇聚
+  if (cardAnimator) {
+    cardAnimator.cancelParticleConverge();
   }
 }
 

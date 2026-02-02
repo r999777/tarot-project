@@ -29,7 +29,21 @@ export class GestureController {
 
   async init() {
     try {
-      // 创建隐藏的 video 元素用于摄像头
+      // 如果已初始化过，只需重新启动摄像头
+      if (this.hands) {
+        // 创建新的 video 元素
+        this.videoElement = document.createElement('video');
+        this.videoElement.style.display = 'none';
+        this.videoElement.playsInline = true;
+        document.body.appendChild(this.videoElement);
+
+        // 重新启动摄像头
+        await this.startCamera();
+        console.log('[gesture] 重新初始化完成');
+        return true;
+      }
+
+      // 首次初始化：创建隐藏的 video 元素用于摄像头
       this.videoElement = document.createElement('video');
       this.videoElement.style.display = 'none';
       this.videoElement.playsInline = true;
