@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>星际塔罗师</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* 色彩系统 */
+      --bg-page: #FFFBF2;
+      --bg-card: #FFFEF9;
+      --btn-primary: #7B5EA7;
+      --btn-primary-glow: #9474BB;
+      --btn-secondary: #C9A962;
+      --btn-secondary-glow: #DABE78;
+      --text-main: #3D3354;
+      --text-sub: #7A7289;
+      --border-card: #D4AF37;
+      --card-grad-start: #7B5EA7;
+      --card-grad-end: #5C4480;
+      --glow-ring: #F5E6C4;
+
+      /* 字体 */
+      --font-title: 'Playfair Display', "Songti SC", "Noto Serif SC", "SimSun", serif;
+      --font-body: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 主菜单页面 */
+    #main-menu {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .title {
+      font-family: var(--font-title);
+      font-size: 2.5rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 10px;
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      font-family: var(--font-title);
+      font-size: 1.1rem;
+      color: var(--text-sub);
+      margin-bottom: 50px;
+      font-weight: 400;
+    }
+
+    /* 卡片容器 */
+    .menu-card {
+      background-color: var(--bg-card);
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      border-radius: 16px;
+      padding: 50px 40px;
+      max-width: 450px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(61, 51, 84, 0.05);
+    }
+
+    /* 塔罗牌背装饰 */
+    .tarot-card-back {
+      width: 100px;
+      height: 160px;
+      background: linear-gradient(135deg, var(--card-grad-start), var(--card-grad-end));
+      border: 2px solid var(--border-card);
+      border-radius: 10px;
+      margin: 0 auto 35px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 25px var(--glow-ring);
+      transition: transform 0.3s ease;
+    }
+
+    .tarot-card-back::after {
+      content: "✦";
+      color: var(--border-card);
+      font-size: 28px;
+      opacity: 0.8;
+    }
+
+    .tarot-card-back:hover {
+      transform: scale(1.05);
+    }
+
+    /* 引导语 */
+    .guide-text {
+      font-family: var(--font-title);
+      font-size: 1.15rem;
+      line-height: 1.6;
+      color: var(--text-main);
+      margin-bottom: 35px;
+    }
+
+    .guide-text span {
+      font-size: 0.95rem;
+      color: var(--text-sub);
+    }
+
+    /* 按钮组 */
+    .btn-group {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+
+    .btn {
+      padding: 14px 32px;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      border: none;
+    }
+
+    .btn-primary {
+      background-color: var(--btn-primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--btn-primary-glow);
+      box-shadow: 0 0 20px rgba(148, 116, 187, 0.6);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background-color: transparent;
+      color: var(--btn-secondary);
+      border: 1px solid var(--btn-secondary);
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--btn-secondary);
+      color: white;
+      box-shadow: 0 0 20px rgba(218, 190, 120, 0.6);
+      transform: translateY(-2px);
+    }
+
+    /* 占卜页面 */
+    #reading-page {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg-page);
+      overflow: hidden;
+    }
+
+    /* 3D 星环区域 - 全屏渲染 */
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg-page);
+    }
+
+    /* 顶部标题覆盖层 */
+    .reading-header {
+      position: absolute;
+      top: 20px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* 底部面板 - 透明覆盖层 */
+    .reading-panel {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 15px 20px 25px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: transparent;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .reading-panel > * {
+      pointer-events: auto;
+    }
+
+    .panel-title {
+      font-family: var(--font-title);
+      font-size: 1.2rem;
+      color: var(--text-main);
+      margin-bottom: 10px;
+      text-shadow: 0 1px 3px rgba(255, 255, 255, 0.8);
+    }
+
+    /* 步骤指示器 */
+    .step-indicators {
+      display: flex;
+      gap: 30px;
+      justify-content: center;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      opacity: 0.5;
+      transition: all 0.3s ease;
+    }
+
+    .step-item.active {
+      opacity: 1;
+      color: var(--btn-primary);
+    }
+
+    .step-item.completed {
+      opacity: 1;
+      color: var(--btn-secondary);
+    }
+
+    .step-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--text-sub);
+      transition: all 0.3s ease;
+    }
+
+    .step-item.active .step-dot {
+      background-color: var(--btn-primary);
+      box-shadow: 0 0 8px var(--btn-primary-glow);
+    }
+
+    .step-item.completed .step-dot {
+      background-color: var(--btn-secondary);
+    }
+
+    /* 卡槽容器 */
+    .card-slots {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .card-slot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .slot-label {
+      font-family: var(--font-title);
+      color: var(--border-card);
+      font-size: 0.8rem;
+      margin-bottom: 8px;
+      letter-spacing: 0.08em;
+    }
+
+    .slot-card {
+      width: 70px;
+      height: 110px;
+      background: linear-gradient(135deg, var(--card-grad-start), var(--card-grad-end));
+      border: 2px solid var(--border-card);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 15px rgba(61, 51, 84, 0.15);
+      opacity: 0.4;
+      transition: all 0.3s ease;
+    }
+
+    .slot-card.filled {
+      opacity: 1;
+      box-shadow: 0 0 15px var(--glow-ring);
+      border-color: var(--btn-secondary);
+    }
+
+    .slot-card::after {
+      content: "?";
+      font-family: var(--font-title);
+      font-size: 22px;
+      color: var(--border-card);
+      opacity: 0.6;
+    }
+
+    .slot-card.filled::after {
+      content: "";  /* 隐藏符号，显示背景图 */
+      display: none;
+    }
+
+    /* 揭示命运按钮 */
+    .next-btn {
+      padding: 12px 35px;
+      background-color: var(--btn-primary);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .next-btn.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .next-btn.active:hover {
+      background-color: var(--btn-primary-glow);
+      box-shadow: 0 0 20px rgba(148, 116, 187, 0.6);
+      transform: translateY(-2px);
+    }
+
+    /* 返回按钮 */
+    .back-btn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(123, 94, 167, 0.1);
+      border: 1px solid var(--btn-primary);
+      color: var(--btn-primary);
+      padding: 10px 20px;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      z-index: 100;
+    }
+
+    .back-btn:hover {
+      background: var(--btn-primary);
+      color: white;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- 主菜单 -->
+  <div id="main-menu">
+    <h1 class="title">Intuitive Tarot</h1>
+    <div class="subtitle">连接直觉 · 探索指引</div>
+
+    <div class="menu-card">
+      <div class="tarot-card-back"></div>
+
+      <p class="guide-text">
+        "此刻，你的能量状态如何？"<br>
+        <span>深呼吸，让星辰为你指引方向。</span>
+      </p>
+
+      <div class="btn-group">
+        <button class="btn btn-primary" id="btn-reading">开始占卜</button>
+        <button class="btn btn-secondary" id="btn-intuition">直觉练习</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 占卜页面 -->
+  <div id="reading-page">
+    <button class="back-btn" id="btn-back">← 返回</button>
+    <div id="canvas-container"></div>
+
+    <!-- 顶部标题 -->
+    <div class="reading-header">
+      <div class="panel-title">选择三张牌，揭示命运</div>
+      <!-- 步骤指示器 -->
+      <div class="step-indicators">
+        <div class="step-item active" id="step-1">
+          <span class="step-dot"></span>
+          <span>张开手掌</span>
+        </div>
+        <div class="step-item" id="step-2">
+          <span class="step-dot"></span>
+          <span>凝神抽取</span>
+        </div>
+        <div class="step-item" id="step-3">
+          <span class="step-dot"></span>
+          <span>收入囊中</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部面板 - 只保留按钮 -->
+    <div class="reading-panel">
+      <button class="next-btn" id="btn-next">揭示命运</button>
+    </div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+    }
+  }
+  </script>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
