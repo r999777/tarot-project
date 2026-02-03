@@ -391,6 +391,16 @@
       color: var(--btn-primary);
       margin-bottom: 15px;
       animation: pulse-star 1.5s ease-in-out infinite;
+      transition: opacity 0.5s ease, color 0.3s ease;
+    }
+
+    .shuffle-star.fade-out {
+      opacity: 0;
+      animation: none;
+    }
+
+    .shuffle-star.phase-2 {
+      color: var(--btn-secondary);
     }
 
     @keyframes pulse-star {
@@ -398,12 +408,22 @@
       50% { opacity: 1; transform: scale(1.1); }
     }
 
+    .shuffle-text-container {
+      position: relative;
+      height: 1.5em;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
     .shuffle-text {
+      position: absolute;
       font-family: var(--font-title);
       font-size: 1.2rem;
       color: var(--text-main);
       text-shadow: 0 2px 10px rgba(255, 255, 255, 0.8);
-      transition: opacity 0.3s ease;
+      transition: opacity 0.5s ease;
+      white-space: nowrap;
     }
 
     .shuffle-text.fade-out {
@@ -411,13 +431,13 @@
     }
 
     .shuffle-complete {
-      display: block;
+      position: absolute;
       font-family: var(--font-title);
-      font-size: 1.1rem;
+      font-size: 1.2rem;
       color: var(--btn-secondary);
-      margin-top: 10px;
       opacity: 0;
       transition: opacity 0.5s ease;
+      white-space: nowrap;
     }
 
     .shuffle-complete.visible {
@@ -447,7 +467,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      background: rgba(255, 254, 249, 0.9);
+      background: var(--bg-card);
       padding: 10px 20px;
       border-radius: 30px;
       box-shadow: 0 4px 15px rgba(61, 51, 84, 0.1);
@@ -458,9 +478,10 @@
 
     .guide-step.active {
       opacity: 1;
-      box-shadow: 0 0 20px rgba(123, 94, 167, 0.4), 0 4px 15px rgba(61, 51, 84, 0.1);
-      border-color: var(--btn-primary);
-      background: rgba(255, 254, 249, 1);
+      box-shadow: 0 0 35px rgba(123, 94, 167, 0.7), 0 0 60px rgba(123, 94, 167, 0.4);
+      border-color: transparent;
+      background: var(--bg-card);
+      color: var(--btn-primary);
     }
 
     .guide-icon {
@@ -472,9 +493,853 @@
       font-size: 0.9rem;
       color: var(--text-main);
     }
+
+    /* 取消抓牌提示 */
+    .grab-cancel-hint {
+      position: absolute;
+      bottom: 340px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-2px);
+      background: var(--btn-secondary);
+      color: white;
+      padding: 12px 28px;
+      border-radius: 50px;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      box-shadow: 0 0 20px rgba(218, 190, 120, 0.6);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      z-index: 25;
+    }
+
+    .grab-cancel-hint.visible {
+      opacity: 1;
+    }
+
+    /* 抓牌方式选择 */
+    .camera-fallback {
+      position: absolute;
+      bottom: 150px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+      background-color: var(--bg-card);
+      border: 1px solid rgba(123, 94, 167, 0.3);
+      padding: 25px 35px;
+      border-radius: 30px;
+      box-shadow: 0 0 20px rgba(123, 94, 167, 0.3), 0 0 40px rgba(123, 94, 167, 0.15);
+      z-index: 20;
+    }
+
+    .camera-fallback.visible {
+      display: flex;
+    }
+
+    .fallback-title {
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      color: var(--text-main);
+      text-align: center;
+    }
+
+    .fallback-buttons {
+      display: flex;
+      gap: 12px;
+    }
+
+    .fallback-btn {
+      padding: 10px 20px;
+      border-radius: 25px;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: none;
+    }
+
+    .fallback-btn.primary {
+      background: var(--btn-primary);
+      color: #fff;
+    }
+
+    .fallback-btn.primary:hover {
+      box-shadow: 0 0 15px rgba(123, 94, 167, 0.4);
+    }
+
+    .fallback-btn.secondary {
+      background: transparent;
+      color: var(--btn-secondary);
+      border: 1px solid var(--btn-secondary);
+    }
+
+    .fallback-btn.secondary:hover {
+      background: rgba(201, 169, 98, 0.1);
+    }
+
+    /* 设置按钮 */
+    .settings-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      color: var(--btn-secondary);
+      font-size: 1.3rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      z-index: 100;
+      box-shadow: 0 4px 15px rgba(61, 51, 84, 0.1);
+    }
+
+    .settings-btn:hover {
+      background: var(--btn-secondary);
+      color: white;
+      transform: rotate(30deg);
+      box-shadow: 0 0 20px rgba(201, 169, 98, 0.4);
+    }
+
+    /* 设置弹窗 */
+    .settings-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .settings-modal.visible {
+      display: flex;
+    }
+
+    .settings-content {
+      background: var(--bg-card);
+      border-radius: 20px;
+      padding: 35px 40px;
+      max-width: 450px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(61, 51, 84, 0.3);
+      border: 1px solid rgba(212, 175, 55, 0.2);
+    }
+
+    .settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+    }
+
+    .settings-title {
+      font-family: var(--font-title);
+      font-size: 1.4rem;
+      color: var(--text-main);
+    }
+
+    .settings-close {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      color: var(--text-sub);
+      font-size: 1.5rem;
+      cursor: pointer;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .settings-close:hover {
+      background: rgba(123, 94, 167, 0.1);
+      color: var(--btn-primary);
+    }
+
+    .settings-group {
+      margin-bottom: 25px;
+    }
+
+    .settings-label {
+      display: block;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      color: var(--text-main);
+      margin-bottom: 10px;
+      font-weight: 500;
+    }
+
+    .settings-select {
+      width: 100%;
+      padding: 12px 16px;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 12px;
+      background: var(--bg-page);
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237A7289' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+    }
+
+    .settings-select:focus {
+      outline: none;
+      border-color: var(--btn-primary);
+      box-shadow: 0 0 0 3px rgba(123, 94, 167, 0.1);
+    }
+
+    .settings-input-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .settings-input {
+      flex: 1;
+      padding: 12px 16px;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 12px;
+      background: var(--bg-page);
+      color: var(--text-main);
+      transition: all 0.2s ease;
+    }
+
+    .settings-input:focus {
+      outline: none;
+      border-color: var(--btn-primary);
+      box-shadow: 0 0 0 3px rgba(123, 94, 167, 0.1);
+    }
+
+    .settings-input::placeholder {
+      color: var(--text-sub);
+    }
+
+    .verify-btn {
+      padding: 12px 20px;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      border: none;
+      border-radius: 12px;
+      background: var(--btn-primary);
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .verify-btn:hover:not(:disabled) {
+      background: var(--btn-primary-glow);
+    }
+
+    .verify-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .verify-btn.verifying {
+      background: var(--text-sub);
+    }
+
+    .verify-btn.verified {
+      background: #4CAF50;
+    }
+
+    .settings-status {
+      margin-top: 10px;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      min-height: 20px;
+    }
+
+    .settings-status.success {
+      color: #4CAF50;
+    }
+
+    .settings-status.error {
+      color: #e74c3c;
+    }
+
+    .settings-status.info {
+      color: var(--text-sub);
+    }
+
+    .settings-hint {
+      margin-top: 8px;
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      color: var(--text-sub);
+    }
+
+    .settings-hint a {
+      color: var(--btn-primary);
+      text-decoration: none;
+    }
+
+    .settings-hint a:hover {
+      text-decoration: underline;
+    }
+
+    .settings-footer {
+      margin-top: 25px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(212, 175, 55, 0.2);
+      text-align: center;
+    }
+
+    .settings-save-btn {
+      padding: 14px 40px;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      border: none;
+      border-radius: 50px;
+      background: var(--btn-primary);
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .settings-save-btn:hover:not(:disabled) {
+      background: var(--btn-primary-glow);
+      box-shadow: 0 0 20px rgba(148, 116, 187, 0.6);
+      transform: translateY(-2px);
+    }
+
+    .settings-save-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* API 配置提示（揭示命运按钮旁） */
+    .api-hint {
+      position: absolute;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .api-hint.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .api-hint a {
+      color: var(--btn-secondary);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    /* 问题输入页面 */
+    #question-page {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .question-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    .question-logo {
+      width: 40px;
+      height: 64px;
+      background: linear-gradient(135deg, var(--card-grad-start), var(--card-grad-end));
+      border: 1.5px solid var(--border-card);
+      border-radius: 5px;
+      box-shadow: 0 0 12px var(--glow-ring);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .question-logo::after {
+      content: "✦";
+      color: var(--border-card);
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    .question-title {
+      font-family: var(--font-title);
+      font-size: 1.8rem;
+      font-weight: 600;
+      color: var(--text-main);
+      letter-spacing: 0.02em;
+    }
+
+    .question-card {
+      max-width: 480px;
+      padding: 35px 35px;
+    }
+
+    .question-card .guide-text {
+      margin-bottom: 25px;
+    }
+
+    .question-input-wrapper {
+      margin-bottom: 25px;
+    }
+
+    .question-input {
+      width: 100%;
+      padding: 14px 18px;
+      font-family: var(--font-body);
+      font-size: 1rem;
+      line-height: 1.5;
+      color: var(--text-main);
+      background: var(--bg-page);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 10px;
+      resize: none;
+      transition: all 0.3s ease;
+    }
+
+    .question-input:focus {
+      outline: none;
+      border-color: var(--btn-primary);
+      box-shadow: 0 0 0 3px rgba(123, 94, 167, 0.1), 0 4px 15px rgba(123, 94, 167, 0.1);
+    }
+
+    .question-input::placeholder {
+      color: var(--text-sub);
+      opacity: 0.7;
+    }
+
+    .question-btn-group {
+      flex-direction: row-reverse;
+    }
+
+    .question-btn-group .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* 解读结果页面 */
+    #result-page {
+      display: none;
+      flex-direction: column;
+      min-height: 100vh;
+      background: var(--bg-page);
+      padding: 20px;
+      padding-top: 70px;
+    }
+
+    /* 顶部牌面展示 */
+    .result-cards {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-shrink: 0;
+    }
+
+    .result-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .result-card-label {
+      font-family: var(--font-title);
+      font-size: 0.8rem;
+      color: var(--btn-secondary);
+      letter-spacing: 0.1em;
+    }
+
+    .result-card-image {
+      width: 60px;
+      height: 100px;
+      background: linear-gradient(135deg, var(--card-grad-start), var(--card-grad-end));
+      border: 1.5px solid var(--border-card);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(61, 51, 84, 0.15);
+      background-size: cover;
+      background-position: center;
+    }
+
+    .result-card-image.reversed {
+      transform: rotate(180deg);
+    }
+
+    .result-card-name {
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+      color: var(--text-main);
+      text-align: center;
+      max-width: 80px;
+    }
+
+    .result-card-name .position {
+      color: var(--text-sub);
+      font-size: 0.7rem;
+    }
+
+    /* 用户问题显示 */
+    .result-question {
+      text-align: center;
+      font-family: var(--font-title);
+      font-size: 1rem;
+      color: var(--text-sub);
+      margin-bottom: 20px;
+      padding: 0 20px;
+      flex-shrink: 0;
+    }
+
+    .result-question::before {
+      content: '"';
+    }
+
+    .result-question::after {
+      content: '"';
+    }
+
+    /* AI 解读内容区域 */
+    .result-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 10px;
+      margin-bottom: 20px;
+    }
+
+    /* 加载状态 */
+    .result-loading {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      gap: 20px;
+    }
+
+    .result-loading.visible {
+      display: flex;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(123, 94, 167, 0.2);
+      border-top-color: var(--btn-primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-family: var(--font-title);
+      font-size: 1rem;
+      color: var(--text-sub);
+    }
+
+    /* 错误状态 */
+    .result-error {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      gap: 15px;
+    }
+
+    .result-error.visible {
+      display: flex;
+    }
+
+    .error-icon {
+      font-size: 3rem;
+      color: #e74c3c;
+    }
+
+    .error-message {
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      color: var(--text-main);
+      text-align: center;
+      max-width: 300px;
+    }
+
+    /* 解读内容 - Markdown 样式 */
+    .result-reading {
+      display: none;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      line-height: 1.8;
+      color: var(--text-main);
+      /* 边框容器样式 */
+      background: var(--bg-card);
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 12px rgba(61, 51, 84, 0.06);
+      /* 限制宽度 */
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .result-reading.visible {
+      display: block;
+    }
+
+    .result-reading h1,
+    .result-reading h2,
+    .result-reading h3 {
+      font-family: var(--font-title);
+      color: var(--text-main);
+      margin: 1.5em 0 0.8em;
+    }
+
+    .result-reading h1 { font-size: 1.4rem; }
+    .result-reading h2 { font-size: 1.2rem; }
+    .result-reading h3 {
+      font-size: 1.05rem;
+      color: var(--btn-primary);
+    }
+
+    .result-reading p {
+      margin: 0.8em 0;
+    }
+
+    .result-reading strong {
+      color: var(--btn-primary);
+      font-weight: 600;
+    }
+
+    .result-reading ul,
+    .result-reading ol {
+      margin: 0.8em 0;
+      padding-left: 1.5em;
+    }
+
+    .result-reading li {
+      margin: 0.4em 0;
+    }
+
+    .result-reading blockquote {
+      border-left: 3px solid var(--btn-secondary);
+      margin: 1em 0;
+      padding: 0.5em 1em;
+      background: rgba(201, 169, 98, 0.1);
+      border-radius: 0 8px 8px 0;
+    }
+
+    .result-reading hr {
+      border: none;
+      border-top: 1px solid rgba(212, 175, 55, 0.3);
+      margin: 1.5em 0;
+    }
+
+    /* 用户追问问题样式 */
+    .followup-question {
+      max-width: 720px;
+      margin: 20px auto;
+      padding: 12px 16px;
+      background: rgba(123, 94, 167, 0.15);
+      border-left: 3px solid var(--btn-primary);
+      border-radius: 0 8px 8px 0;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      color: var(--btn-primary);
+    }
+
+    .followup-question::before {
+      content: '追问：';
+      font-weight: 600;
+    }
+
+    /* 追问回答框样式（与主回答框一致） */
+    .followup-answer {
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      line-height: 1.8;
+      color: var(--text-main);
+      background: var(--bg-card);
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 12px rgba(61, 51, 84, 0.06);
+      max-width: 720px;
+      margin: 0 auto 20px;
+    }
+
+    .followup-answer h1,
+    .followup-answer h2,
+    .followup-answer h3 {
+      font-family: var(--font-title);
+      color: var(--text-main);
+      margin: 1.5em 0 0.8em;
+    }
+
+    .followup-answer h1 { font-size: 1.4rem; }
+    .followup-answer h2 { font-size: 1.2rem; }
+    .followup-answer h3 {
+      font-size: 1.05rem;
+      color: var(--btn-primary);
+    }
+
+    .followup-answer p { margin: 0.8em 0; }
+    .followup-answer strong { color: var(--btn-primary); font-weight: 600; }
+    .followup-answer ul, .followup-answer ol { margin: 0.8em 0; padding-left: 1.5em; }
+    .followup-answer li { margin: 0.4em 0; }
+
+    /* 追问加载状态 */
+    .followup-loading {
+      max-width: 720px;
+      margin: 0 auto 20px;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+      background: var(--bg-card);
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      border-radius: 12px;
+    }
+
+    /* 底部追问区域 */
+    .result-footer {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 15px 0;
+      border-top: 1px solid rgba(212, 175, 55, 0.2);
+      /* 与解读区域保持一致宽度 */
+      max-width: 720px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .followup-input-wrapper {
+      display: flex;
+      gap: 10px;
+    }
+
+    .followup-input {
+      flex: 1;
+      padding: 12px 18px;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 25px;
+      background: var(--bg-card);
+      color: var(--text-main);
+      transition: all 0.3s ease;
+    }
+
+    .followup-input:focus {
+      outline: none;
+      border-color: var(--btn-primary);
+      box-shadow: 0 0 0 3px rgba(123, 94, 167, 0.1);
+    }
+
+    .followup-input::placeholder {
+      color: var(--text-sub);
+    }
+
+    .followup-btn {
+      padding: 12px 24px;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 500;
+      border: none;
+      border-radius: 25px;
+      background: var(--btn-primary);
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .followup-btn:hover:not(:disabled) {
+      background: var(--btn-primary-glow);
+      box-shadow: 0 0 15px rgba(148, 116, 187, 0.5);
+    }
+
+    .followup-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .result-home-btn {
+      align-self: center;
+      padding: 10px 30px;
+    }
   </style>
 </head>
 <body>
+  <!-- 设置按钮 -->
+  <button class="settings-btn" id="btn-settings" title="设置">⚙</button>
+
+  <!-- 设置弹窗 -->
+  <div class="settings-modal" id="settings-modal">
+    <div class="settings-content">
+      <div class="settings-header">
+        <h2 class="settings-title">AI 设置</h2>
+        <button class="settings-close" id="settings-close">×</button>
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label">选择 AI 服务</label>
+        <select class="settings-select" id="ai-provider">
+          <option value="gemini">Google Gemini (推荐)</option>
+          <option value="claude">Anthropic Claude</option>
+        </select>
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label">API Key</label>
+        <div class="settings-input-group">
+          <input type="password" class="settings-input" id="api-key-input" placeholder="输入你的 API Key">
+          <button class="verify-btn" id="verify-btn">验证</button>
+        </div>
+        <div class="settings-status" id="api-status"></div>
+        <div class="settings-hint" id="api-hint">
+          <span id="hint-gemini">获取 Gemini API Key: <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a></span>
+          <span id="hint-claude" style="display:none;">获取 Claude API Key: <a href="https://console.anthropic.com/" target="_blank">Anthropic Console</a></span>
+        </div>
+      </div>
+
+      <div class="settings-footer">
+        <button class="settings-save-btn" id="settings-save" disabled>保存设置</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 主菜单 -->
   <div id="main-menu">
     <h1 class="title">Intuitive Tarot</h1>
@@ -495,6 +1360,30 @@
     </div>
   </div>
 
+  <!-- 问题输入页面 -->
+  <div id="question-page">
+    <div class="question-header">
+      <div class="question-logo"></div>
+      <h1 class="question-title">Intuitive Tarot</h1>
+    </div>
+
+    <div class="menu-card question-card">
+      <p class="guide-text">
+        在星辰为你指引之前<br>
+        <span>请告诉我，你想要探索什么？</span>
+      </p>
+
+      <div class="question-input-wrapper">
+        <textarea class="question-input" id="question-input" placeholder="例如：我的事业发展方向是什么？" rows="2"></textarea>
+      </div>
+
+      <div class="btn-group question-btn-group">
+        <button class="btn btn-primary" id="btn-start-reading" disabled>进入星环</button>
+        <button class="btn btn-secondary" id="btn-back-to-menu">返回</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 占卜页面 -->
   <div id="reading-page">
     <button class="back-btn" id="btn-back">← 返回</button>
@@ -502,9 +1391,11 @@
 
     <!-- 洗牌提示 -->
     <div class="shuffle-hint" id="shuffle-hint">
-      <span class="shuffle-star">✦</span>
-      <span class="shuffle-text" id="shuffle-text">星辰正在为您排列命运之牌...</span>
-      <span class="shuffle-complete" id="shuffle-complete">命运牌阵已就位，请伸出您的手</span>
+      <span class="shuffle-star" id="shuffle-star">✦</span>
+      <div class="shuffle-text-container">
+        <span class="shuffle-text" id="shuffle-text">星辰正在为您排列命运之牌...</span>
+        <span class="shuffle-complete" id="shuffle-complete">命运牌阵已就位，请依循下方指引，抓取属于您的命运之牌</span>
+      </div>
     </div>
 
     <!-- 手势引导 -->
@@ -515,7 +1406,19 @@
       </div>
       <div class="guide-step" id="guide-step-2">
         <span class="guide-icon">✊</span>
-        <span class="guide-label">第二步：握紧拳头 1.5 秒，抓取命运之牌</span>
+        <span class="guide-label">第二步：握紧拳头 1 秒，抓取命运之牌</span>
+      </div>
+    </div>
+
+    <!-- 取消抓牌提示 -->
+    <div class="grab-cancel-hint" id="grab-cancel-hint">握拳时长不够，抓取已取消，牌已归位</div>
+
+    <!-- 抓牌方式选择 -->
+    <div class="camera-fallback" id="camera-fallback">
+      <span class="fallback-title" id="fallback-title">请选择抓牌方式</span>
+      <div class="fallback-buttons">
+        <button class="fallback-btn primary" id="btn-enable-camera">开启摄像头 · 手势抓牌</button>
+        <button class="fallback-btn secondary" id="btn-use-mouse">鼠标点击 · 触碰命运</button>
       </div>
     </div>
 
@@ -541,9 +1444,70 @@
 
     <!-- 底部面板 - 只保留按钮 -->
     <div class="reading-panel">
+      <div class="api-hint" id="api-hint-panel">
+        请先 <a id="open-settings-link">配置 AI 服务</a> 才能揭示命运
+      </div>
       <button class="next-btn" id="btn-next">揭示命运</button>
     </div>
   </div>
+
+  <!-- 解读结果页面 -->
+  <div id="result-page">
+    <button class="back-btn" id="btn-back-result">← 返回</button>
+
+    <!-- 顶部牌面展示 -->
+    <div class="result-cards">
+      <div class="result-card" id="result-card-0">
+        <div class="result-card-label">过去</div>
+        <div class="result-card-image"></div>
+        <div class="result-card-name"></div>
+      </div>
+      <div class="result-card" id="result-card-1">
+        <div class="result-card-label">现在</div>
+        <div class="result-card-image"></div>
+        <div class="result-card-name"></div>
+      </div>
+      <div class="result-card" id="result-card-2">
+        <div class="result-card-label">未来</div>
+        <div class="result-card-image"></div>
+        <div class="result-card-name"></div>
+      </div>
+    </div>
+
+    <!-- 用户问题显示 -->
+    <div class="result-question" id="result-question"></div>
+
+    <!-- AI 解读内容区域 -->
+    <div class="result-content">
+      <!-- 加载状态 -->
+      <div class="result-loading" id="result-loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">星际塔罗师正在解读命运...</div>
+      </div>
+
+      <!-- 错误状态 -->
+      <div class="result-error" id="result-error">
+        <div class="error-icon">⚠</div>
+        <div class="error-message" id="error-message"></div>
+        <button class="btn btn-primary" id="btn-retry">重试</button>
+      </div>
+
+      <!-- 解读内容 -->
+      <div class="result-reading" id="result-reading"></div>
+    </div>
+
+    <!-- 底部追问区域 -->
+    <div class="result-footer">
+      <div class="followup-input-wrapper">
+        <input type="text" class="followup-input" id="followup-input" placeholder="还有什么想问的？">
+        <button class="followup-btn" id="btn-followup" disabled>发送</button>
+      </div>
+      <button class="btn btn-secondary result-home-btn" id="btn-result-home">返回首页</button>
+    </div>
+  </div>
+
+  <!-- Markdown 渲染库 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
   <script type="importmap">
   {

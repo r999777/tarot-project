@@ -830,6 +830,9 @@ export class StarRing {
     if (mode === 'fast') {
       this.rotationSpeed = (2 * Math.PI) / (CONFIG.ANIMATION.RING_ROTATION_FAST / 1000);
       console.log('[star-ring] 加速旋转');
+    } else if (mode === 'fist') {
+      this.rotationSpeed = (2 * Math.PI) / (CONFIG.ANIMATION.RING_ROTATION_FIST / 1000);
+      console.log('[star-ring] 握拳旋转');
     } else {
       this.rotationSpeed = (2 * Math.PI) / (CONFIG.ANIMATION.RING_ROTATION_NORMAL / 1000);
       console.log('[star-ring] 正常旋转');
@@ -863,6 +866,17 @@ export class StarRing {
     if (index > -1) {
       this.cardMeshes.splice(index, 1);
       this.ringGroup.remove(mesh);  // 从内层 ringGroup 移除
+    }
+  }
+
+  // 恢复一张牌（取消抓取时）
+  restoreCard(mesh) {
+    console.log('[star-ring] restoreCard called, mesh:', !!mesh, 'already in cardMeshes:', mesh ? this.cardMeshes.includes(mesh) : 'N/A');
+    if (mesh && !this.cardMeshes.includes(mesh)) {
+      mesh.visible = true;  // 确保可见
+      this.cardMeshes.push(mesh);
+      this.ringGroup.add(mesh);
+      console.log('[star-ring] 牌已恢复到星环:', mesh.userData.cardData?.nameCN, 'cardMeshes count:', this.cardMeshes.length);
     }
   }
 

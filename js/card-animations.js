@@ -12,7 +12,7 @@ export class CardAnimator {
     this.isAnimating = false;
 
     // 动画参数
-    this.convergeDuration = 1500;  // 粒子汇聚时间（与握拳时间同步）
+    this.convergeDuration = 1000;  // 粒子汇聚时间（与握拳时间同步）
     this.flipDuration = 600;       // 翻牌时间
     this.flyDuration = 800;        // 飞入卡槽时间（更慢）
 
@@ -25,6 +25,7 @@ export class CardAnimator {
     // 粒子汇聚状态（用于握拳同步）
     this.isConverging = false;
     this.convergeResolve = null;
+    this.disperseId = null; // 消散动画ID，用于取消旧动画
 
     // 3D 卡槽
     this.slots = [];
@@ -185,8 +186,17 @@ export class CardAnimator {
 
   // 开始粒子汇聚（握拳开始时调用）
   startParticleConverge() {
+    // 清理残留的粒子系统（可能来自未完成的消散动画）
+    if (this.particleSystem) {
+      this.scene.remove(this.particleSystem);
+      this.particleSystem.geometry.dispose();
+      this.particleSystem.material.dispose();
+      this.particleSystem = null;
+    }
+
     if (this.isConverging) return;
     this.isConverging = true;
+    this.disperseId = null; // 取消任何进行中的消散动画
 
     // 计算展示位置
     const displayPos = this.getDisplayPosition();
@@ -274,63 +284,145 @@ export class CardAnimator {
     }
   }
 
-  // 取消粒子汇聚（握拳松开时调用）
+  // 取消粒子汇聚（握拳松开时调用）- 带消散动画
   cancelParticleConverge() {
-    if (!this.isConverging) return;
+    console.log('[card-animations] cancelParticleConverge called, isConverging:', this.isConverging, 'particleSystem:', !!this.particleSystem);
+    if (!this.isConverging && !this.particleSystem) return;
+    if (!this.particleSystem) return;
 
     this.isConverging = false;
     this.convergeResolve = null;
 
-    if (this.particleSystem) {
-      this.scene.remove(this.particleSystem);
-      this.particleSystem.geometry.dispose();
-      this.particleSystem.material.dispose();
-      this.particleSystem = null;
+    // 记录当前粒子位置作为消散起点
+    const posArray = this.particleSystem.geometry.attributes.position.array;
+    const currentPositions = new Float32Array(posArray.length);
+    for (let i = 0; i < posArray.length; i++) {
+      currentPositions[i] = posArray[i];
     }
 
-    console.log('[card-animations] 取消粒子汇聚');
+    // 检查 convergePositions 是否存在
+    if (!this.convergePositions) {
+      console.warn('[card-animations] convergePositions 不存在，直接清理粒子');
+      if (this.particleSystem) {
+        this.scene.remove(this.particleSystem);
+        this.particleSystem.geometry.dispose();
+        this.particleSystem.material.dispose();
+        this.particleSystem = null;
+      }
+      return;
+    }
+
+    // 开始消散动画
+    const disperseStartTime = Date.now();
+    const disperseDuration = 400; // 400ms 消散
+    const convergePositions = this.convergePositions; // 保存引用
+    const disperseId = Date.now(); // 唯一ID，用于取消旧动画
+    this.disperseId = disperseId;
+    const particleSystemRef = this.particleSystem; // 保存当前粒子系统引用
+    const materialRef = this.convergeMaterial; // 保存当前材质引用
+
+    const animateDisperse = () => {
+      // 检查是否被新动画取消
+      if (this.disperseId !== disperseId) {
+        // 旧动画被取消，清理旧粒子系统（如果还没被清理）
+        if (particleSystemRef && particleSystemRef.parent) {
+          this.scene.remove(particleSystemRef);
+          particleSystemRef.geometry.dispose();
+          particleSystemRef.material.dispose();
+        }
+        return;
+      }
+      if (!particleSystemRef || !particleSystemRef.parent) return;
+
+      const elapsed = Date.now() - disperseStartTime;
+      const progress = Math.min(elapsed / disperseDuration, 1);
+      const easeProgress = this.easeOutCubic(progress);
+
+      const posArray = particleSystemRef.geometry.attributes.position.array;
+      const particleCount = posArray.length / 3;
+
+      for (let i = 0; i < particleCount; i++) {
+        // 从当前位置向外扩散到原始远处位置
+        posArray[i * 3] = currentPositions[i * 3] + (convergePositions[i * 3] - currentPositions[i * 3]) * easeProgress;
+        posArray[i * 3 + 1] = currentPositions[i * 3 + 1] + (convergePositions[i * 3 + 1] - currentPositions[i * 3 + 1]) * easeProgress;
+        posArray[i * 3 + 2] = currentPositions[i * 3 + 2] + (convergePositions[i * 3 + 2] - currentPositions[i * 3 + 2]) * easeProgress;
+      }
+
+      particleSystemRef.geometry.attributes.position.needsUpdate = true;
+
+      // 淡出 - 使用保存的材质引用，不影响新创建的粒子
+      if (materialRef) {
+        materialRef.opacity = 1.0 * (1 - easeProgress);
+      }
+
+      if (progress < 1) {
+        requestAnimationFrame(animateDisperse);
+      } else {
+        // 动画完成，清理粒子
+        if (particleSystemRef.parent) {
+          this.scene.remove(particleSystemRef);
+          particleSystemRef.geometry.dispose();
+          particleSystemRef.material.dispose();
+        }
+        if (this.disperseId === disperseId) {
+          this.disperseId = null;
+        }
+        console.log('[card-animations] 粒子消散完成');
+      }
+    };
+
+    animateDisperse();
+    console.log('[card-animations] 开始粒子消散');
   }
 
-  // 完成粒子汇聚（握拳1.5秒后调用）
-  async completeParticleConverge() {
+  // 等待粒子汇聚完成（不淡出，保持粒子在原位）
+  async waitForConvergeComplete() {
     if (!this.isConverging) return;
 
-    // 等待粒子汇聚完成
+    // 等待粒子汇聚动画完成
     if (Date.now() - this.convergeStartTime < this.convergeDuration) {
       await new Promise(resolve => {
         this.convergeResolve = resolve;
       });
     }
 
-    // 淡出粒子
-    const fadeStart = Date.now();
-    const fadeDuration = 200;
-
-    await new Promise(resolve => {
-      const fade = () => {
-        const progress = (Date.now() - fadeStart) / fadeDuration;
-        if (this.convergeMaterial) {
-          this.convergeMaterial.opacity = 1.0 * (1 - progress);
-        }
-        if (progress < 1) {
-          requestAnimationFrame(fade);
-        } else {
-          resolve();
-        }
-      };
-      fade();
-    });
-
-    // 清理粒子
-    if (this.particleSystem) {
-      this.scene.remove(this.particleSystem);
-      this.particleSystem.geometry.dispose();
-      this.particleSystem.material.dispose();
-      this.particleSystem = null;
-    }
-
     this.isConverging = false;
-    console.log('[card-animations] 粒子汇聚完成');
+    console.log('[card-animations] 粒子汇聚完成，保持显示');
+  }
+
+  // 淡出并清理粒子（供外部或内部调用）
+  fadeOutParticles(duration = 400) {
+    if (!this.particleSystem || !this.convergeMaterial) return;
+
+    const fadeStart = Date.now();
+    const startOpacity = this.convergeMaterial.opacity;
+
+    const fade = () => {
+      if (!this.particleSystem || !this.convergeMaterial) return;
+
+      const progress = Math.min((Date.now() - fadeStart) / duration, 1);
+      this.convergeMaterial.opacity = startOpacity * (1 - this.easeOutCubic(progress));
+
+      if (progress < 1) {
+        requestAnimationFrame(fade);
+      } else {
+        // 清理粒子
+        if (this.particleSystem) {
+          this.scene.remove(this.particleSystem);
+          this.particleSystem.geometry.dispose();
+          this.particleSystem.material.dispose();
+          this.particleSystem = null;
+        }
+        console.log('[card-animations] 粒子淡出完成');
+      }
+    };
+    fade();
+  }
+
+  // 完成粒子汇聚（握拳1秒后调用）- 保留兼容
+  async completeParticleConverge() {
+    await this.waitForConvergeComplete();
+    this.fadeOutParticles(200);
   }
 
   // 执行完整的抓牌动画序列（粒子已在握拳时开始）
@@ -339,10 +431,10 @@ export class CardAnimator {
     this.isAnimating = true;
 
     try {
-      // 1. 完成粒子汇聚（如果正在进行）
-      await this.completeParticleConverge();
+      // 1. 等待粒子汇聚动画完成（不淡出，保持在原位）
+      await this.waitForConvergeComplete();
 
-      // 2. 牌面直接显示正面
+      // 2. 牌背显现 + 粒子淡出（同步进行）
       await this.playCardFlip(cardData, isReversed);
 
       // 3. 牌飞入卡槽
@@ -501,7 +593,7 @@ export class CardAnimator {
     return texture;
   }
 
-  // 显示牌面 - 粒子汇聚后直接显示正面（无翻转动画）
+  // 显示牌面 - 牌背显现 → Y轴翻转 → 显示正面
   playCardFlip(cardData, isReversed) {
     return new Promise(async (resolve) => {
       const displayPos = this.getDisplayPosition();
@@ -513,41 +605,60 @@ export class CardAnimator {
       const imageUrl = CONFIG.CARD_IMAGE_BASE_URL + cardData.imageFilename;
       console.log('[card-animations] 加载牌面:', cardData.nameCN, imageUrl);
 
+      // 创建牌背纹理
+      this.cardBackTexture = this.createCardBackTexture();
+
       try {
         this.cardFrontTexture = await new Promise((res, rej) => {
           textureLoader.load(imageUrl, res, undefined, rej);
         });
       } catch (e) {
-        console.warn('[card-animations] 牌面图片加载失败，使用默认');
-        this.cardBackTexture = this.createCardBackTexture();
+        console.warn('[card-animations] 牌面图片加载失败，使用牌背');
         this.cardFrontTexture = this.cardBackTexture;
       }
 
-      // 创建卡牌 - 直接显示正面
-      const cardWidth = 1.8;
-      const cardHeight = 3.0;
-      const geometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
-
-      // 牌面材质（不透明，忽略纹理透明通道）
-      const frontMaterial = new THREE.MeshBasicMaterial({
-        map: this.cardFrontTexture,
-        side: THREE.DoubleSide,
-        transparent: false,
-        alphaTest: 0,
-      });
       // 确保纹理不使用预乘 alpha
       if (this.cardFrontTexture) {
         this.cardFrontTexture.premultiplyAlpha = false;
       }
 
-      // 创建单面牌（只有正面）
-      this.cardMesh = new THREE.Mesh(geometry, frontMaterial);
+      // 创建卡牌 - 初始显示牌背
+      const cardWidth = 1.8;
+      const cardHeight = 3.0;
+      const geometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
 
-      // 初始位置 - 卡槽前方上方
+      // 牌背材质（初始透明，用于渐入效果）
+      const backMaterial = new THREE.MeshBasicMaterial({
+        map: this.cardBackTexture,
+        side: THREE.FrontSide,
+        transparent: true,
+        opacity: 0,
+      });
+
+      // 牌面材质
+      const frontMaterial = new THREE.MeshBasicMaterial({
+        map: this.cardFrontTexture,
+        side: THREE.FrontSide,
+        transparent: false,
+        alphaTest: 0,
+      });
+
+      // 创建双面牌（正反两面）
+      this.cardMesh = new THREE.Group();
+
+      // 牌背面（初始朝向相机，rotation.y = 0）
+      const backMesh = new THREE.Mesh(geometry.clone(), backMaterial);
+      backMesh.name = 'back';
+      this.cardMesh.add(backMesh);
+
+      // 牌正面（初始背对相机，rotation.y = PI）
+      const frontMesh = new THREE.Mesh(geometry, frontMaterial);
+      frontMesh.rotation.y = Math.PI;
+      frontMesh.name = 'front';
+      this.cardMesh.add(frontMesh);
+
+      // 初始位置
       this.cardMesh.position.copy(displayPos);
-
-      // 卡牌保持正对摄像头（横平竖直）
-      this.cardMesh.rotation.y = 0;
 
       // 逆位处理 - 绕Z轴旋转180度
       if (isReversed) {
@@ -556,8 +667,63 @@ export class CardAnimator {
 
       this.scene.add(this.cardMesh);
 
-      // 短暂停留让用户看清牌面
-      setTimeout(resolve, 600);
+      // 阶段1：粒子淡出 + 牌背渐入（同步进行，500ms）
+      const fadeInDuration = 500;
+      const fadeInStart = Date.now();
+
+      // 开始粒子淡出（与牌背显现同步）
+      this.fadeOutParticles(fadeInDuration);
+
+      await new Promise((fadeResolve) => {
+        const animateFadeIn = () => {
+          const elapsed = Date.now() - fadeInStart;
+          const progress = Math.min(elapsed / fadeInDuration, 1);
+          // 使用更缓和的曲线，让牌背从浅到深显现
+          const easeProgress = this.easeOutCubic(progress);
+
+          backMaterial.opacity = easeProgress;
+
+          if (progress < 1) {
+            requestAnimationFrame(animateFadeIn);
+          } else {
+            // 渐入完成，设为不透明
+            backMaterial.transparent = false;
+            backMaterial.opacity = 1;
+            fadeResolve();
+          }
+        };
+        animateFadeIn();
+      });
+
+      // 短暂停顿让用户看到牌背 (300ms)
+      await new Promise(r => setTimeout(r, 300));
+
+      // 阶段2：Y轴翻转动画 (600ms)
+      const flipStart = Date.now();
+
+      await new Promise((flipResolve) => {
+        const animateFlip = () => {
+          const elapsed = Date.now() - flipStart;
+          const progress = Math.min(elapsed / this.flipDuration, 1);
+          const easeProgress = this.easeInOutCubic(progress);
+
+          // Y轴旋转：从0到PI（180度）
+          this.cardMesh.rotation.y = easeProgress * Math.PI;
+
+          if (progress < 1) {
+            requestAnimationFrame(animateFlip);
+          } else {
+            flipResolve();
+          }
+        };
+        animateFlip();
+      });
+
+      // 短暂停留让用户看清牌面 (400ms)
+      await new Promise(r => setTimeout(r, 400));
+
+      console.log('[card-animations] 翻牌动画完成:', cardData.nameCN);
+      resolve();
     });
   }
 
@@ -578,7 +744,8 @@ export class CardAnimator {
       const scaleRatio = 1.4 / 1.8;
       const targetScale = new THREE.Vector3(scaleRatio, scaleRatio, scaleRatio);
 
-      // 保存初始旋转（Z轴旋转用于逆位）
+      // 保存初始旋转（Y轴用于翻转后状态，Z轴用于逆位）
+      const startRotationY = this.cardMesh.rotation.y;
       const startRotationZ = this.cardMesh.rotation.z;
 
       const startTime = Date.now();
@@ -594,7 +761,8 @@ export class CardAnimator {
         // 缩小到卡槽大小
         this.cardMesh.scale.lerpVectors(startScale, targetScale, easeProgress);
 
-        // 保持Z轴旋转（逆位状态）
+        // 保持旋转状态（Y轴翻转 + Z轴逆位）
+        this.cardMesh.rotation.y = startRotationY;
         this.cardMesh.rotation.z = startRotationZ;
 
         if (progress < 1) {
@@ -611,8 +779,8 @@ export class CardAnimator {
   // 获取展示位置（卡槽前方、上方）
   getDisplayPosition() {
     // 卡槽位置：y=-2.50, z=-1.00
-    // 展示位置：在卡槽前面（z更大）和上面（y更大）
-    return new THREE.Vector3(0, -0.5, 0.5);
+    // 展示位置：z=0.5，y往下调避免被星环遮挡
+    return new THREE.Vector3(0, -1.6, 0.5);
   }
 
   // 获取屏幕中心的世界坐标（保留兼容）
@@ -677,13 +845,15 @@ export class CardAnimator {
 
     if (this.cardMesh) {
       this.scene.remove(this.cardMesh);
-      // cardMesh 现在是单个 Mesh，不是 Group
-      if (this.cardMesh.geometry) {
-        this.cardMesh.geometry.dispose();
-      }
-      if (this.cardMesh.material) {
-        this.cardMesh.material.dispose();
-      }
+      // cardMesh 现在是 Group，包含正反两面
+      this.cardMesh.traverse((child) => {
+        if (child.geometry) {
+          child.geometry.dispose();
+        }
+        if (child.material) {
+          child.material.dispose();
+        }
+      });
       this.cardMesh = null;
     }
 

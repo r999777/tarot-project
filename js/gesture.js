@@ -22,7 +22,7 @@ export class GestureController {
     this.currentGesture = 'none'; // 'none', 'palm', 'fist'
     this.fistStartTime = null;
     this.fistProgress = 0;
-    this.fistHoldDuration = 1500; // 握拳持续1.5秒确认抓取
+    this.fistHoldDuration = 1000; // 握拳持续1秒确认抓取
 
     console.log('[gesture] 手势控制器初始化');
   }
@@ -139,12 +139,9 @@ export class GestureController {
 
   onResults(results) {
     if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
-      // 没有检测到手
+      // 没有检测到手 - 通过 handleGestureChange 处理，确保 onFistRelease 被调用
       if (this.currentGesture !== 'none') {
-        this.currentGesture = 'none';
-        this.fistStartTime = null;
-        this.fistProgress = 0;
-        this.onGestureChange('none');
+        this.handleGestureChange('none');
       }
       return;
     }
@@ -167,16 +164,18 @@ export class GestureController {
     console.log('[gesture] 弯曲手指数:', fingersCurled, '伸展手指数:', fingersExtended);
 
     // 判断手势
+    let result = 'none';
     // 张开手掌：至少4根手指伸展
     if (fingersExtended >= 4) {
-      return 'palm';
+      result = 'palm';
     }
     // 握拳：至少4根手指弯曲
-    if (fingersCurled >= 4) {
-      return 'fist';
+    else if (fingersCurled >= 4) {
+      result = 'fist';
     }
 
-    return 'none';
+    console.log('[gesture] 分析结果:', result, '当前手势:', this.currentGesture);
+    return result;
   }
 
   // 检查手指是否弯曲（指尖在PIP关节下方或接近手掌）
@@ -298,18 +297,20 @@ export class GestureController {
     console.log('[gesture] 手势变化:', oldGesture, '->', newGesture);
 
     // 处理手势变化
-    if (newGesture === 'palm') {
+    // 离开握拳状态时，先触发 onFistRelease
+    if (oldGesture === 'fist' && newGesture !== 'fist') {
+      this.onFistRelease();
       this.fistStartTime = null;
       this.fistProgress = 0;
+    }
+
+    if (newGesture === 'palm') {
       this.onPalmOpen();
     } else if (newGesture === 'fist') {
       this.fistStartTime = Date.now();
       this.fistProgress = 0;
       this.onFistStart();
     } else {
-      if (oldGesture === 'fist') {
-        this.onFistRelease();
-      }
       this.fistStartTime = null;
       this.fistProgress = 0;
     }
@@ -338,6 +339,13 @@ export class GestureController {
 
   getCurrentGesture() {
     return this.currentGesture;
+  }
+
+  // 重置握拳计时器（取消抓取时调用，防止快速再握拳时计时累积）
+  resetFistTimer() {
+    this.fistStartTime = null;
+    this.fistProgress = 0;
+    console.log('[gesture] 握拳计时器已重置');
   }
 
   stop() {

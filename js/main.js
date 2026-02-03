@@ -11,6 +11,8 @@ import { loadTarotData, getAllCards } from './tarot-data.js';
 import { GestureController } from './gesture.js';
 import { CardAnimator } from './card-animations.js';
 import { DebugControls } from './debug-controls.js';
+import { StorageService } from './storage.js';
+import { AIService } from './ai-service.js';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -27,21 +29,70 @@ let selectedCards = [];
 let isGrabbing = false; // 防止重复抓取
 let isPalmActivated = false; // 必须先张开手掌才能握拳抓取
 let palmResetTimer = null; // 延迟重置计时器
+let palmHoldTimer = null; // 手掌持续计时器（需持续300ms才激活）
 let pendingCard = null; // 握拳时待抓取的牌
 const MAX_CARDS = 3;
+const PALM_HOLD_DURATION = 300; // 手掌需持续300ms才能激活抓取资格
+
+// 用户输入的问题
+let userQuestion = '';
+
+// 对话历史（用于追问上下文）
+let conversationHistory = [];
 
 // DOM 元素
 const mainMenu = document.getElementById('main-menu');
+const questionPage = document.getElementById('question-page');
 const readingPage = document.getElementById('reading-page');
 const btnReading = document.getElementById('btn-reading');
+const questionInput = document.getElementById('question-input');
+const btnStartReading = document.getElementById('btn-start-reading');
+const btnBackToMenu = document.getElementById('btn-back-to-menu');
 const btnIntuition = document.getElementById('btn-intuition');
 const btnBack = document.getElementById('btn-back');
 const shuffleHint = document.getElementById('shuffle-hint');
+const shuffleStar = document.getElementById('shuffle-star');
 const shuffleText = document.getElementById('shuffle-text');
 const shuffleComplete = document.getElementById('shuffle-complete');
 const gestureGuide = document.getElementById('gesture-guide');
 const guideStep1 = document.getElementById('guide-step-1');
 const guideStep2 = document.getElementById('guide-step-2');
+const cameraFallback = document.getElementById('camera-fallback');
+const fallbackTitle = document.getElementById('fallback-title');
+const btnEnableCamera = document.getElementById('btn-enable-camera');
+const btnUseMouse = document.getElementById('btn-use-mouse');
+const grabCancelHint = document.getElementById('grab-cancel-hint');
+
+// 设置相关 DOM 元素
+const btnSettings = document.getElementById('btn-settings');
+const settingsModal = document.getElementById('settings-modal');
+const settingsClose = document.getElementById('settings-close');
+const aiProviderSelect = document.getElementById('ai-provider');
+const apiKeyInput = document.getElementById('api-key-input');
+const verifyBtn = document.getElementById('verify-btn');
+const apiStatus = document.getElementById('api-status');
+const hintGemini = document.getElementById('hint-gemini');
+const hintClaude = document.getElementById('hint-claude');
+const settingsSaveBtn = document.getElementById('settings-save');
+const apiHintPanel = document.getElementById('api-hint-panel');
+const openSettingsLink = document.getElementById('open-settings-link');
+const btnNext = document.getElementById('btn-next');
+
+// 解读结果页面 DOM 元素
+const resultPage = document.getElementById('result-page');
+const btnBackResult = document.getElementById('btn-back-result');
+const resultQuestion = document.getElementById('result-question');
+const resultLoading = document.getElementById('result-loading');
+const resultError = document.getElementById('result-error');
+const errorMessage = document.getElementById('error-message');
+const btnRetry = document.getElementById('btn-retry');
+const resultReading = document.getElementById('result-reading');
+const followupInput = document.getElementById('followup-input');
+const btnFollowup = document.getElementById('btn-followup');
+const btnResultHome = document.getElementById('btn-result-home');
+
+// AI 服务
+const aiService = new AIService();
 
 // 初始化数据
 async function initData() {
@@ -95,36 +146,61 @@ async function initGesture() {
     onCameraReady: () => {
       console.log('[main] 摄像头就绪');
       updateStepIndicator(1, 'active');
-      // 显示手势引导
+      // 隐藏选择界面，显示手势引导
+      cameraFallback.classList.remove('visible');
       gestureGuide.classList.add('visible');
     },
     onCameraError: (error) => {
-      console.warn('[main] 摄像头不可用，降级到鼠标模式:', error.message);
-      // TODO: 启用鼠标交互模式
+      console.warn('[main] 摄像头不可用:', error.message);
+      // 显示失败提示，只保留鼠标按钮
+      cameraFallback.classList.add('visible');
+      fallbackTitle.textContent = '摄像头开启失败';
+      btnEnableCamera.style.display = 'none';
+      btnUseMouse.textContent = '以鼠标触碰命运之牌';
     },
     onPalmOpen: () => {
-      // 张开手掌 → 激活抓取资格，星环加速
+      // 张开手掌 → 星环加速，但需持续300ms才激活抓取资格
       if (starRing && selectedCards.length < MAX_CARDS) {
         // 清除重置计时器
         if (palmResetTimer) {
           clearTimeout(palmResetTimer);
           palmResetTimer = null;
         }
-        isPalmActivated = true;
+        // 星环立即加速
         starRing.setSpeed('fast');
-        updateStepIndicator(2, 'active');
-        // 切换手势引导：第一步取消发光，第二步发光
-        guideStep1.classList.remove('active');
-        guideStep2.classList.add('active');
-        console.log('[main] 手掌张开，已激活抓取资格');
+
+        // 如果已经激活，无需再等待
+        if (isPalmActivated) {
+          return;
+        }
+
+        // 开始300ms计时，持续张开才激活
+        if (!palmHoldTimer) {
+          palmHoldTimer = setTimeout(() => {
+            isPalmActivated = true;
+            palmHoldTimer = null;
+            updateStepIndicator(2, 'active');
+            // 切换手势引导：第一步取消发光，第二步发光
+            guideStep1.classList.remove('active');
+            guideStep2.classList.add('active');
+            console.log('[main] 手掌持续300ms，已激活抓取资格');
+          }, PALM_HOLD_DURATION);
+        }
       }
     },
     onFistStart: () => {
-      // 开始握拳 → 先从星环移除牌，再开始粒子汇聚
-      // 清除重置计时器（从手掌到握拳的过渡）
+      // 开始握拳 → 星环切换到握拳速度（30秒/圈），先从星环移除牌，再开始粒子汇聚
+      if (starRing) {
+        starRing.setSpeed('fist');
+      }
+      // 清除计时器（从手掌到握拳的过渡）
       if (palmResetTimer) {
         clearTimeout(palmResetTimer);
         palmResetTimer = null;
+      }
+      if (palmHoldTimer) {
+        clearTimeout(palmHoldTimer);
+        palmHoldTimer = null;
       }
       console.log('[main] 开始握拳, isPalmActivated:', isPalmActivated);
       if (starRing && cardAnimator && selectedCards.length < MAX_CARDS && !isGrabbing && isPalmActivated) {
@@ -133,6 +209,7 @@ async function initGesture() {
         const closestCard = starRing.getClosestCard(cameraPos);
         if (closestCard) {
           pendingCard = {
+            mesh: closestCard,  // 保存mesh引用，用于取消时恢复
             cardData: closestCard.userData.cardData,
             isReversed: closestCard.userData.isReversed
           };
@@ -145,23 +222,35 @@ async function initGesture() {
       }
     },
     onFistHold: () => {
-      // 握拳持续1.5秒 → 只有先张开手掌才能抓取牌
+      // 握拳持续1秒 → 只有先张开手掌才能抓取牌
       if (starRing && selectedCards.length < MAX_CARDS && isPalmActivated) {
         grabCard();
       }
     },
     onFistRelease: () => {
-      // 松开拳头 → 如果还没完成抓取，取消粒子
-      console.log('[main] 松开拳头');
+      // 松开拳头 → 如果还没完成抓取，取消粒子并恢复牌
+      console.log('[main] 松开拳头, isGrabbing:', isGrabbing, 'pendingCard:', !!pendingCard);
       if (cardAnimator && !isGrabbing) {
         cardAnimator.cancelParticleConverge();
-        // 清空待抓取的牌（牌已从星环移除，放弃抓取）
-        if (pendingCard) {
-          console.log('[main] 放弃抓取:', pendingCard.cardData.nameCN);
+        // 重置握拳计时器，防止快速再握拳时计时累积
+        if (gestureController) {
+          gestureController.resetFistTimer();
+        }
+        // 恢复待抓取的牌到星环
+        if (pendingCard && starRing) {
+          console.log('[main] 取消抓取，恢复牌:', pendingCard.cardData.nameCN, 'mesh:', !!pendingCard.mesh);
+          starRing.restoreCard(pendingCard.mesh);
           pendingCard = null;
+          // 显示取消提示
+          showGrabCancelHint();
+          // 取消后完全重置流程：必须重新张开手掌
+          isPalmActivated = false;
+          guideStep1.classList.add('active');
+          guideStep2.classList.remove('active');
+          console.log('[main] 取消抓取，重置为第一步：张开手掌');
         }
         if (selectedCards.length < MAX_CARDS) {
-          updateStepIndicator(2, 'active');
+          updateStepIndicator(1, 'active');
         }
       }
     },
@@ -169,13 +258,26 @@ async function initGesture() {
       // 手势变化
       if (gesture === 'none' && starRing) {
         starRing.setSpeed('normal');
+        // 取消手掌持续计时器
+        if (palmHoldTimer) {
+          clearTimeout(palmHoldTimer);
+          palmHoldTimer = null;
+        }
         // 延迟重置抓取资格（防止手掌到握拳过渡时误重置）
         if (!palmResetTimer) {
           palmResetTimer = setTimeout(() => {
             isPalmActivated = false;
             palmResetTimer = null;
-            console.log('[main] 手势消失，重置抓取资格');
+            // 重置手势引导到第一步（与 isPalmActivated 同步）
+            guideStep1.classList.add('active');
+            guideStep2.classList.remove('active');
+            console.log('[main] 手势消失，重置抓取资格和引导');
           }, 800); // 800ms 延迟
+        }
+        // 只在未激活时立即重置引导（已激活则等待800ms计时器）
+        if (!isPalmActivated) {
+          guideStep1.classList.add('active');
+          guideStep2.classList.remove('active');
         }
       } else if (gesture === 'palm' || gesture === 'fist') {
         // 检测到有效手势，取消重置
@@ -184,7 +286,8 @@ async function initGesture() {
           palmResetTimer = null;
         }
       }
-      if (gesture !== 'palm' && gesture !== 'fist') {
+      // 手势不是手掌且未激活时，保持第一步
+      if (gesture !== 'palm' && !isPalmActivated) {
         updateStepIndicator(1, 'active');
       }
     }
@@ -279,6 +382,14 @@ function activateRevealButton() {
   console.log('[main] 可以揭示命运了！');
 }
 
+// 显示取消抓牌提示
+function showGrabCancelHint() {
+  grabCancelHint.classList.add('visible');
+  setTimeout(() => {
+    grabCancelHint.classList.remove('visible');
+  }, 1500);
+}
+
 // 显示占卜页面
 async function showReadingPage() {
   mainMenu.classList.add('hidden');
@@ -305,20 +416,26 @@ async function showReadingPage() {
   // 洗牌动画：紫色粒子旋转一会，然后分散显示牌
   await new Promise(resolve => setTimeout(resolve, 1500));
 
+  // 第一段文字和星星开始消失，同时牌动画开始
+  shuffleText.classList.add('fade-out');
+  shuffleStar.classList.add('fade-out');
+
   if (starRing) {
     await starRing.completeShuffleAnimation();
   }
 
-  // 牌出现后：第一段文字消失，第二段文字出现
-  shuffleText.classList.add('fade-out');
+  // 牌出现后，停顿50ms再出现第二段文字和星星（金色）
+  await new Promise(resolve => setTimeout(resolve, 50));
+  shuffleStar.classList.remove('fade-out');
+  shuffleStar.classList.add('phase-2');
   shuffleComplete.classList.add('visible');
 
-  // 停留1s后隐藏整个提示
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  // 停留2s后隐藏整个提示
+  await new Promise(resolve => setTimeout(resolve, 2000));
   shuffleHint.classList.remove('visible');
 
-  // 牌显示后，再开启摄像头手势识别
-  await initGesture();
+  // 牌显示后，显示抓牌方式选择界面
+  cameraFallback.classList.add('visible');
 }
 
 // 重置 UI
@@ -328,6 +445,15 @@ function resetUI() {
     cardAnimator.cancelParticleConverge(); // 取消残留的粒子汇聚
     cardAnimator.resetSlots();
   }
+  // 清理手势相关计时器
+  if (palmHoldTimer) {
+    clearTimeout(palmHoldTimer);
+    palmHoldTimer = null;
+  }
+  if (palmResetTimer) {
+    clearTimeout(palmResetTimer);
+    palmResetTimer = null;
+  }
   // 重置按钮
   const btn = document.getElementById('btn-next');
   btn.classList.remove('active');
@@ -336,8 +462,16 @@ function resetUI() {
   // 隐藏引导提示
   shuffleHint.classList.remove('visible');
   gestureGuide.classList.remove('visible');
+  cameraFallback.classList.remove('visible');
+  // 重置抓牌方式选择界面
+  fallbackTitle.textContent = '请选择抓牌方式';
+  btnEnableCamera.style.display = '';
+  btnEnableCamera.textContent = '开启摄像头 · 手势抓牌';
+  btnUseMouse.textContent = '鼠标点击 · 触碰命运';
   // 重置洗牌提示状态
   shuffleText.classList.remove('fade-out');
+  shuffleStar.classList.remove('fade-out');
+  shuffleStar.classList.remove('phase-2');
   shuffleComplete.classList.remove('visible');
   // 重置手势引导状态
   guideStep1.classList.add('active');
@@ -358,6 +492,9 @@ function showMainMenu() {
   if (cardAnimator) {
     cardAnimator.cancelParticleConverge();
   }
+
+  // 重置用户问题
+  userQuestion = '';
 }
 
 // 直觉练习（待实现）
@@ -365,12 +502,486 @@ function showIntuitionPage() {
   alert('直觉练习功能开发中...');
 }
 
+// 显示问题输入页面
+function showQuestionPage() {
+  mainMenu.classList.add('hidden');
+  questionPage.style.display = 'flex';
+  // 清空之前的输入
+  questionInput.value = '';
+  btnStartReading.disabled = true;
+  // 聚焦输入框
+  setTimeout(() => questionInput.focus(), 100);
+}
+
+// 从问题页面返回主菜单
+function hideQuestionPage() {
+  questionPage.style.display = 'none';
+  mainMenu.classList.remove('hidden');
+  // 清空问题（用户取消了这次占卜）
+  userQuestion = '';
+}
+
+// 从问题页面进入星环页面
+function startReadingFromQuestion() {
+  // 保存用户输入的问题
+  userQuestion = questionInput.value.trim();
+  console.log('[main] 用户问题:', userQuestion);
+
+  // 隐藏问题页面，显示占卜页面
+  questionPage.style.display = 'none';
+  showReadingPage();
+}
+
 // 绑定事件
-btnReading.addEventListener('click', showReadingPage);
+btnReading.addEventListener('click', showQuestionPage);
 btnIntuition.addEventListener('click', showIntuitionPage);
 btnBack.addEventListener('click', showMainMenu);
 
+// 问题页面事件
+btnBackToMenu.addEventListener('click', hideQuestionPage);
+btnStartReading.addEventListener('click', startReadingFromQuestion);
+
+// 问题输入监听 - 有内容才能继续
+questionInput.addEventListener('input', () => {
+  const hasContent = questionInput.value.trim().length > 0;
+  btnStartReading.disabled = !hasContent;
+});
+
+// 摄像头选择按钮
+btnEnableCamera.addEventListener('click', () => {
+  // 立即隐藏选择界面，后台加载摄像头
+  cameraFallback.classList.remove('visible');
+  // 异步初始化（成功/失败在回调中处理）
+  initGesture();
+});
+
+btnUseMouse.addEventListener('click', () => {
+  cameraFallback.classList.remove('visible');
+  // TODO: 启用鼠标交互模式
+  console.log('[main] 用户选择鼠标模式');
+});
+
+// ============================================
+// 设置功能
+// ============================================
+
+// 打开设置弹窗
+function openSettings() {
+  // 加载当前设置
+  const settings = StorageService.getSettings();
+  aiProviderSelect.value = settings.aiProvider;
+  apiKeyInput.value = settings.apiKey;
+
+  // 更新提示链接
+  updateApiHint(settings.aiProvider);
+
+  // 更新验证按钮状态
+  if (settings.apiKeyVerified && settings.apiKey) {
+    verifyBtn.textContent = '已验证';
+    verifyBtn.classList.add('verified');
+    settingsSaveBtn.disabled = false;
+    apiStatus.textContent = 'API Key 已验证通过';
+    apiStatus.className = 'settings-status success';
+  } else {
+    verifyBtn.textContent = '验证';
+    verifyBtn.classList.remove('verified');
+    settingsSaveBtn.disabled = true;
+    apiStatus.textContent = '';
+  }
+
+  settingsModal.classList.add('visible');
+}
+
+// 关闭设置弹窗
+function closeSettings() {
+  settingsModal.classList.remove('visible');
+}
+
+// 更新 API 提示链接
+function updateApiHint(provider) {
+  if (provider === 'gemini') {
+    hintGemini.style.display = '';
+    hintClaude.style.display = 'none';
+  } else {
+    hintGemini.style.display = 'none';
+    hintClaude.style.display = '';
+  }
+}
+
+// 验证 API Key
+async function verifyApiKey() {
+  const provider = aiProviderSelect.value;
+  const apiKey = apiKeyInput.value.trim();
+
+  if (!apiKey) {
+    apiStatus.textContent = '请输入 API Key';
+    apiStatus.className = 'settings-status error';
+    return;
+  }
+
+  // 更新 UI 状态
+  verifyBtn.disabled = true;
+  verifyBtn.textContent = '验证中...';
+  verifyBtn.classList.add('verifying');
+  verifyBtn.classList.remove('verified');
+  apiStatus.textContent = '正在验证...';
+  apiStatus.className = 'settings-status info';
+
+  try {
+    const result = await aiService.verifyAPIKey(provider, apiKey);
+
+    if (result.success) {
+      verifyBtn.textContent = '已验证';
+      verifyBtn.classList.remove('verifying');
+      verifyBtn.classList.add('verified');
+      apiStatus.textContent = 'API Key 验证成功！';
+      apiStatus.className = 'settings-status success';
+      settingsSaveBtn.disabled = false;
+
+      // 临时保存验证状态
+      verifyBtn.dataset.verified = 'true';
+    } else {
+      verifyBtn.textContent = '验证';
+      verifyBtn.classList.remove('verifying');
+      apiStatus.textContent = result.error || '验证失败，请检查 API Key';
+      apiStatus.className = 'settings-status error';
+      settingsSaveBtn.disabled = true;
+      verifyBtn.dataset.verified = 'false';
+    }
+  } catch (error) {
+    verifyBtn.textContent = '验证';
+    verifyBtn.classList.remove('verifying');
+    apiStatus.textContent = '网络错误，请重试';
+    apiStatus.className = 'settings-status error';
+    settingsSaveBtn.disabled = true;
+  }
+
+  verifyBtn.disabled = false;
+}
+
+// 保存设置
+function saveSettings() {
+  const provider = aiProviderSelect.value;
+  const apiKey = apiKeyInput.value.trim();
+  const verified = verifyBtn.dataset.verified === 'true' || verifyBtn.classList.contains('verified');
+
+  const settings = {
+    aiProvider: provider,
+    apiKey: apiKey,
+    apiKeyVerified: verified,
+    includeIntuition: true
+  };
+
+  StorageService.saveSettings(settings);
+  console.log('[main] 设置已保存:', provider, verified ? '(已验证)' : '(未验证)');
+
+  // 更新 API 提示状态
+  updateApiHintVisibility();
+
+  closeSettings();
+}
+
+// 更新 API 配置提示可见性
+function updateApiHintVisibility() {
+  const isConfigured = StorageService.isAPIConfigured();
+  if (isConfigured) {
+    apiHintPanel.classList.remove('visible');
+  } else {
+    apiHintPanel.classList.add('visible');
+  }
+}
+
+// 检查是否可以揭示命运
+function checkCanReveal() {
+  const isConfigured = StorageService.isAPIConfigured();
+  if (!isConfigured) {
+    // 打开设置弹窗
+    openSettings();
+    return false;
+  }
+  return true;
+}
+
+// 设置事件绑定
+btnSettings.addEventListener('click', openSettings);
+settingsClose.addEventListener('click', closeSettings);
+openSettingsLink.addEventListener('click', openSettings);
+
+// 点击弹窗外部关闭
+settingsModal.addEventListener('click', (e) => {
+  if (e.target === settingsModal) {
+    closeSettings();
+  }
+});
+
+// AI 提供商切换
+aiProviderSelect.addEventListener('change', (e) => {
+  updateApiHint(e.target.value);
+  // 切换提供商后需要重新验证
+  verifyBtn.textContent = '验证';
+  verifyBtn.classList.remove('verified');
+  verifyBtn.dataset.verified = 'false';
+  settingsSaveBtn.disabled = true;
+  apiStatus.textContent = '';
+});
+
+// API Key 输入变化
+apiKeyInput.addEventListener('input', () => {
+  // 输入变化后需要重新验证
+  verifyBtn.textContent = '验证';
+  verifyBtn.classList.remove('verified');
+  verifyBtn.dataset.verified = 'false';
+  settingsSaveBtn.disabled = true;
+  apiStatus.textContent = '';
+});
+
+// 验证按钮
+verifyBtn.addEventListener('click', verifyApiKey);
+
+// 保存按钮
+settingsSaveBtn.addEventListener('click', saveSettings);
+
+// 揭示命运按钮
+btnNext.addEventListener('click', () => {
+  if (!checkCanReveal()) {
+    return;
+  }
+  console.log('[main] 揭示命运，选中的牌:', selectedCards);
+  showResultPage();
+});
+
+// ============================================
+// 解读结果页面
+// ============================================
+
+// 显示解读结果页面
+function showResultPage() {
+  // 隐藏星环页面，显示结果页面
+  readingPage.style.display = 'none';
+  resultPage.style.display = 'flex';
+
+  // 显示用户问题
+  resultQuestion.textContent = userQuestion;
+
+  // 渲染牌面
+  renderResultCards();
+
+  // 重置状态
+  resultLoading.classList.remove('visible');
+  resultError.classList.remove('visible');
+  resultReading.classList.remove('visible');
+  resultReading.innerHTML = '';
+  followupInput.value = '';
+  btnFollowup.disabled = true;
+
+  // 清空之前的追问内容
+  const resultContent = document.querySelector('.result-content');
+  resultContent.querySelectorAll('.followup-question, .followup-answer, .followup-loading').forEach(el => el.remove());
+
+  // 开始 AI 解读
+  callAIReading();
+}
+
+// 渲染结果页面的牌面
+function renderResultCards() {
+  const labels = ['过去', '现在', '未来'];
+
+  selectedCards.forEach((selected, index) => {
+    const cardEl = document.getElementById(`result-card-${index}`);
+    if (!cardEl) return;
+
+    const imageEl = cardEl.querySelector('.result-card-image');
+    const nameEl = cardEl.querySelector('.result-card-name');
+    const labelEl = cardEl.querySelector('.result-card-label');
+
+    // 设置标签
+    labelEl.textContent = labels[index];
+
+    // 设置牌面图片
+    const imageUrl = `https://raw.githubusercontent.com/metabismuth/tarot-json/master/cards/${selected.card.imageFilename}`;
+    imageEl.style.backgroundImage = `url(${imageUrl})`;
+
+    // 逆位处理
+    if (selected.isReversed) {
+      imageEl.classList.add('reversed');
+    } else {
+      imageEl.classList.remove('reversed');
+    }
+
+    // 设置牌名
+    const positionText = selected.isReversed ? '逆位' : '正位';
+    nameEl.innerHTML = `${selected.card.nameCN}<br><span class="position">${positionText}</span>`;
+  });
+}
+
+// 调用 AI 解读
+async function callAIReading(followupQuestion = null) {
+  const resultContent = document.querySelector('.result-content');
+  const isFollowup = followupQuestion !== null;
+
+  // 禁用追问输入
+  followupInput.disabled = true;
+  btnFollowup.disabled = true;
+
+  let loadingEl, answerEl;
+
+  if (isFollowup) {
+    // 追问模式：追加用户问题和新的回答框
+    const questionEl = document.createElement('div');
+    questionEl.className = 'followup-question';
+    questionEl.textContent = followupQuestion;
+    resultContent.appendChild(questionEl);
+
+    // 创建加载状态
+    loadingEl = document.createElement('div');
+    loadingEl.className = 'followup-loading';
+    loadingEl.innerHTML = `
+      <div class="loading-spinner"></div>
+      <div class="loading-text">星际塔罗师正在回答...</div>
+    `;
+    resultContent.appendChild(loadingEl);
+
+    // 滚动到底部
+    resultContent.scrollTop = resultContent.scrollHeight;
+  } else {
+    // 首次解读：使用原有的加载和显示逻辑
+    resultLoading.classList.add('visible');
+    resultError.classList.remove('visible');
+    resultReading.classList.remove('visible');
+    // 重置对话历史
+    conversationHistory = [];
+  }
+
+  try {
+    // 构建牌面数据
+    const cards = selectedCards.map(s => ({
+      ...s.card,
+      isReversed: s.isReversed,
+      keywords: s.card.keywords || []
+    }));
+
+    // 确定问题内容
+    const question = followupQuestion || userQuestion;
+
+    // 收集完整响应
+    let fullResponse = '';
+
+    // 调用 AI（追问时传递对话历史）
+    await aiService.getReading(question, cards, (chunk) => {
+      fullResponse += chunk;
+    }, isFollowup ? conversationHistory : []);
+
+    // 更新对话历史
+    if (isFollowup) {
+      // 追问：添加用户问题和 AI 回复
+      conversationHistory.push({ role: 'user', content: question });
+      conversationHistory.push({ role: 'assistant', content: fullResponse });
+    } else {
+      // 首次解读：初始化对话历史（包含完整的牌面信息）
+      const initialMessage = aiService.buildUserMessage(question, cards, []);
+      conversationHistory.push({ role: 'user', content: initialMessage });
+      conversationHistory.push({ role: 'assistant', content: fullResponse });
+    }
+
+    if (isFollowup) {
+      // 移除加载状态
+      loadingEl.remove();
+
+      // 创建回答框
+      answerEl = document.createElement('div');
+      answerEl.className = 'followup-answer';
+      answerEl.innerHTML = marked.parse(fullResponse);
+      resultContent.appendChild(answerEl);
+
+      // 滚动到新回答
+      resultContent.scrollTop = resultContent.scrollHeight;
+    } else {
+      // 首次解读
+      resultReading.innerHTML = marked.parse(fullResponse);
+      resultLoading.classList.remove('visible');
+      resultReading.classList.add('visible');
+    }
+
+    // 启用追问输入
+    followupInput.disabled = false;
+
+    console.log('[main] AI 解读完成，对话历史长度:', conversationHistory.length);
+
+  } catch (error) {
+    console.error('[main] AI 解读失败:', error);
+
+    if (isFollowup) {
+      // 移除加载状态，显示错误
+      loadingEl.remove();
+      const errorEl = document.createElement('div');
+      errorEl.className = 'followup-answer';
+      errorEl.style.color = '#e74c3c';
+      errorEl.textContent = error.message || '回答失败，请重试';
+      resultContent.appendChild(errorEl);
+    } else {
+      // 首次解读错误
+      resultLoading.classList.remove('visible');
+      errorMessage.textContent = error.message || '解读失败，请重试';
+      resultError.classList.add('visible');
+    }
+
+    // 启用追问输入（允许重试后继续）
+    followupInput.disabled = false;
+  }
+}
+
+// 从结果页面返回星环页面
+function hideResultPage() {
+  resultPage.style.display = 'none';
+  readingPage.style.display = 'block';
+}
+
+// 从结果页面返回首页
+function resultToHome() {
+  resultPage.style.display = 'none';
+  mainMenu.classList.remove('hidden');
+
+  // 重置状态
+  userQuestion = '';
+  selectedCards = [];
+}
+
+// 结果页面事件绑定
+btnBackResult.addEventListener('click', hideResultPage);
+btnResultHome.addEventListener('click', resultToHome);
+
+// 重试按钮
+btnRetry.addEventListener('click', () => {
+  callAIReading();
+});
+
+// 追问输入监听
+followupInput.addEventListener('input', () => {
+  const hasContent = followupInput.value.trim().length > 0;
+  btnFollowup.disabled = !hasContent;
+});
+
+// 追问发送按钮
+btnFollowup.addEventListener('click', () => {
+  const question = followupInput.value.trim();
+  if (question) {
+    followupInput.value = '';
+    btnFollowup.disabled = true;
+    callAIReading(question);
+  }
+});
+
+// 追问输入框回车发送
+followupInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter' && !btnFollowup.disabled) {
+    btnFollowup.click();
+  }
+});
+
 // 启动应用
 initData();
+
+// 初始化时检查 API 配置状态
+updateApiHintVisibility();
 
 console.log('[main] 事件绑定完成');
