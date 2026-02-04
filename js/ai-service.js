@@ -212,13 +212,48 @@ export class AIService {
     if (elements.pentacles > 0) elementList.push(`星币${elements.pentacles}张`);
     message += `- 元素分布：${elementList.join('、')}\n`;
 
-    // 直觉记录（如果有）
-    if (intuitionRecords.length > 0) {
-      message += '\n# 用户直觉记录\n';
-      intuitionRecords.forEach(record => {
-        const orientation = record.isReversed ? '逆位' : '正位';
-        message += `- ${record.cardName}（${orientation}）：「${record.userFeeling}」\n`;
+    // 直觉记录（三层降级策略）
+    if (intuitionRecords !== null) {
+      // intuitionRecords 为 null 表示未启用，[] 表示启用但无数据
+      let specificIntuition = '';
+      let hasSpecificData = false;
+
+      cards.forEach(card => {
+        // 查找该牌的所有直觉记录
+        const cardRecords = intuitionRecords.filter(r => r.cardId === card.id);
+        if (cardRecords.length === 0) return;
+
+        // 优先查找正逆位完全匹配的记录
+        const exactMatch = cardRecords.find(r => r.isReversed === card.isReversed);
+        const anyMatch = cardRecords[0]; // 最新的记录作为备选
+
+        const positionStr = card.isReversed ? '逆位' : '正位';
+
+        if (exactMatch) {
+          // 完全匹配：直接使用
+          specificIntuition += `- **${card.nameCN}【${positionStr}】**：「${exactMatch.feeling}」\n`;
+          hasSpecificData = true;
+        } else if (anyMatch) {
+          // 位置不匹配：使用但标注需要转化
+          const recordPosition = anyMatch.isReversed ? '逆位' : '正位';
+          specificIntuition += `- **${card.nameCN}【${positionStr}】**：「${anyMatch.feeling}」\n`;
+          specificIntuition += `  *(此感悟基于${recordPosition}，当前是${positionStr}，请适当转化)*\n`;
+          hasSpecificData = true;
+        }
       });
+
+      message += '\n## 🔮 星际塔罗师的直觉感悟\n';
+
+      if (hasSpecificData) {
+        // 情况 A：至少有一张牌有直觉数据
+        message += '> 以下是开发者对这些牌的亲身感悟，请重点参考并融入解读：\n\n';
+        message += specificIntuition;
+        message += '\n> 对于没有列出的牌，请保持一致的感性风格。\n';
+      } else {
+        // 情况 B：勾选了但这几张牌都没数据（优雅降级）
+        message += '> 用户启用了「星际塔罗师能量」，但这几张牌尚未收录具体感悟。\n';
+        message += '> **请切换到高共情模式**：用更感性、更像老朋友的口吻解读，而非教科书式罗列。\n';
+      }
     }
 
     message += '\n---\n请根据以上信息进行解读。';
@@ -337,7 +372,8 @@ export class AIService {
   }
 
   // 获取解读（主入口）
-  async getReading(question, cards, onChunk, conversationHistory = []) {
+  // intuitionRecords: 外部传入的直觉记录，由调用方控制是否包含
+  async getReading(question, cards, onChunk, conversationHistory = [], intuitionRecords = []) {
     const settings = StorageService.getSettings();
 
     if (!settings.apiKey || !settings.apiKeyVerified) {
@@ -352,13 +388,6 @@ export class AIService {
       throw new Error(CONFIG.INVALID_INPUT_MESSAGE);
     }
 
-    // 获取相关的直觉记录
-    let intuitionRecords = [];
-    if (settings.includeIntuition) {
-      const cardIds = cards.map(c => c.id);
-      intuitionRecords = StorageService.getRecordsByCardIds(cardIds);
-    }
-
     // 获取问题类型和对应的 system prompt
     let questionType, systemPrompt;
 
@@ -368,9 +397,10 @@ export class AIService {
       questionType = await this.classifyQuestionWithAI(settings.apiKey, question);
       console.log('[AI] 分类结果:', questionType);
 
-      // 拦截无效输入
+      // 无效输入：直接返回引导消息（不作为错误）
       if (questionType === 'invalid') {
-        throw new Error(CONFIG.INVALID_INPUT_MESSAGE);
+        onChunk(CONFIG.INVALID_INPUT_MESSAGE);
+        return;
       }
     } else {
       // Claude 或追问：使用关键词匹配

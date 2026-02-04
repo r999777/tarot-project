@@ -203,7 +203,7 @@ export class StarRing {
 
   // 完成洗牌：平滑过渡动画
   async completeShuffleAnimation() {
-    const TOTAL_DURATION = 1800;       // 总动画时长
+    const TOTAL_DURATION = 1200;       // 总动画时长
     const FLY_PROGRESS_MAX = 0.7;      // 紫色粒子最终飞到70%位置
     const FADE_START_PROGRESS = 0.4;   // 牌在40%时开始显现
 

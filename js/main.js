@@ -7,12 +7,13 @@ console.log('[main] 应用启动');
 // 导入模块
 import { TarotScene } from './three-scene.js';
 import { StarRing } from './star-ring.js';
-import { loadTarotData, getAllCards } from './tarot-data.js';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js';
 import { GestureController } from './gesture.js';
 import { CardAnimator } from './card-animations.js';
 import { DebugControls } from './debug-controls.js';
 import { StorageService } from './storage.js';
 import { AIService } from './ai-service.js';
+import { MouseController } from './mouse-controller.js';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -23,6 +24,8 @@ let starRing = null;
 let allCards = [];
 let gestureController = null;
 let cardAnimator = null;
+let mouseController = null;
+let isMouseMode = false;  // 是否使用鼠标模式
 
 // 选牌状态
 let selectedCards = [];
@@ -48,6 +51,10 @@ const btnReading = document.getElementById('btn-reading');
 const questionInput = document.getElementById('question-input');
 const btnStartReading = document.getElementById('btn-start-reading');
 const btnBackToMenu = document.getElementById('btn-back-to-menu');
+const useIntuitionCheckbox = document.getElementById('use-intuition');
+
+// 是否注入直觉数据
+let useIntuition = true;
 const btnIntuition = document.getElementById('btn-intuition');
 const btnBack = document.getElementById('btn-back');
 const shuffleHint = document.getElementById('shuffle-hint');
@@ -90,6 +97,26 @@ const resultReading = document.getElementById('result-reading');
 const followupInput = document.getElementById('followup-input');
 const btnFollowup = document.getElementById('btn-followup');
 const btnResultHome = document.getElementById('btn-result-home');
+
+// 直觉练习页面 DOM 元素
+const intuitionPage = document.getElementById('intuition-page');
+const btnBackIntuition = document.getElementById('btn-back-intuition');
+const intuitionCard1 = document.getElementById('intuition-card-1');
+const intuitionCard2 = document.getElementById('intuition-card-2');
+const intuitionHint = document.querySelector('.intuition-hint');
+const intuitionSave = document.getElementById('intuition-save');
+const btnSaveFeelings = document.getElementById('btn-save-feelings');
+const btnViewHistory = document.getElementById('btn-view-history');
+
+// 直觉历史记录页面 DOM 元素
+const historyPage = document.getElementById('intuition-history-page');
+const btnBackHistory = document.getElementById('btn-back-history');
+const historyList = document.getElementById('history-list');
+const historyEmpty = document.getElementById('history-empty');
+const btnStartPractice = document.getElementById('btn-start-practice');
+
+// 直觉练习状态
+let intuitionCards = []; // 当前练习的两张牌数据
 
 // AI 服务
 const aiService = new AIService();
@@ -390,6 +417,151 @@ function showGrabCancelHint() {
   }, 1500);
 }
 
+// ============================================
+// 鼠标模式
+// ============================================
+
+// 启用鼠标模式
+function enableMouseMode() {
+  isMouseMode = true;
+  console.log('[main] 启用鼠标模式, scene:', !!scene, 'starRing:', !!starRing);
+
+  // 隐藏手势引导
+  gestureGuide.classList.remove('visible');
+
+  // 创建鼠标控制器
+  if (!mouseController && scene && starRing) {
+    console.log('[main] 创建鼠标控制器');
+    mouseController = new MouseController({
+      scene: scene,
+      starRing: starRing,
+      container: document.getElementById('canvas-container'),
+      onCardSelect: onMouseCardSelect
+    });
+
+    // 注册更新回调（处理惯性）
+    scene.addUpdateCallback((delta) => {
+      if (mouseController) {
+        mouseController.update(delta);
+      }
+    });
+  } else if (!mouseController) {
+    console.warn('[main] 无法创建鼠标控制器: scene=', !!scene, 'starRing=', !!starRing);
+  }
+
+  // 启用鼠标控制
+  if (mouseController) {
+    console.log('[main] 启用鼠标控制器');
+    mouseController.enable();
+  } else {
+    console.warn('[main] mouseController 不存在，无法启用');
+  }
+
+  // 显示鼠标模式提示（可选）
+  showMouseModeHint();
+}
+
+// 禁用鼠标模式
+function disableMouseMode() {
+  isMouseMode = false;
+  if (mouseController) {
+    mouseController.disable();
+  }
+}
+
+// 鼠标模式下点击选牌回调
+async function onMouseCardSelect(cardMesh) {
+  if (!starRing || !scene || !cardAnimator) return;
+  if (selectedCards.length >= MAX_CARDS) return;
+  if (isGrabbing) return;
+
+  isGrabbing = true;
+
+  const cardData = cardMesh.userData.cardData;
+  const isReversed = cardMesh.userData.isReversed;
+
+  // 从星环移除这张牌
+  starRing.removeCard(cardMesh);
+
+  console.log('[main] 鼠标选牌:', cardData.nameCN, isReversed ? '(逆位)' : '(正位)');
+
+  // 计算卡槽索引
+  const slotIndex = selectedCards.length + 1;
+
+  // 开始粒子汇聚动画
+  cardAnimator.startParticleConverge();
+
+  // 短暂延迟后播放抓牌动画
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  // 播放抓牌动画序列
+  await cardAnimator.playGrabAnimation(cardData, isReversed, slotIndex, () => {
+    cardAnimator.updateSlot(slotIndex, cardData, isReversed);
+  });
+
+  // 添加到已选列表
+  selectedCards.push({
+    card: cardData,
+    isReversed: isReversed
+  });
+
+  // 检查是否选满
+  if (selectedCards.length < MAX_CARDS) {
+    starRing.setSpeed('normal');
+  } else {
+    // 选满3张，激活揭示按钮
+    activateRevealButton();
+    disableMouseMode();
+    console.log('[main] 鼠标模式抽牌完成');
+  }
+
+  isGrabbing = false;
+}
+
+// 显示鼠标模式提示
+function showMouseModeHint() {
+  // 创建容器（两个框水平并列）
+  const container = document.createElement('div');
+  container.id = 'mouse-mode-hint';
+  container.style.cssText = `
+    position: fixed;
+    bottom: 360px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 120px;
+    z-index: 100;
+    animation: fadeInUp 0.5s ease;
+  `;
+
+  // 通用框样式
+  const boxStyle = `
+    background: rgba(255, 255, 255, 0.9);
+    padding: 12px 24px;
+    border-radius: 20px;
+    border: none;
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    color: var(--text-main);
+    box-shadow: 0 0 15px rgba(123, 94, 167, 0.4);
+    white-space: nowrap;
+  `;
+
+  container.innerHTML = `
+    <div style="${boxStyle}">按住左键拖拽 · 转动命运之轮</div>
+    <div style="${boxStyle}">点击牌面 · 选择你的指引</div>
+  `;
+
+  document.body.appendChild(container);
+
+  // 3秒后淡出
+  setTimeout(() => {
+    container.style.transition = 'opacity 0.5s ease';
+    container.style.opacity = '0';
+    setTimeout(() => container.remove(), 500);
+  }, 3000);
+}
+
 // 显示占卜页面
 async function showReadingPage() {
   mainMenu.classList.add('hidden');
@@ -411,6 +583,10 @@ async function showReadingPage() {
   // 重建星环（仅在非首次进入时，恢复被移除的卡牌）
   if (starRing && !isFirstInit) {
     await starRing.rebuild();
+    // 更新鼠标控制器的星环引用
+    if (mouseController) {
+      mouseController.setStarRing(starRing);
+    }
   }
 
   // 洗牌动画：紫色粒子旋转一会，然后分散显示牌
@@ -445,6 +621,8 @@ function resetUI() {
     cardAnimator.cancelParticleConverge(); // 取消残留的粒子汇聚
     cardAnimator.resetSlots();
   }
+  // 禁用鼠标模式
+  disableMouseMode();
   // 清理手势相关计时器
   if (palmHoldTimer) {
     clearTimeout(palmHoldTimer);
@@ -497,9 +675,233 @@ function showMainMenu() {
   userQuestion = '';
 }
 
-// 直觉练习（待实现）
+// ============================================
+// 直觉练习功能
+// ============================================
+
+// 显示直觉练习页面
 function showIntuitionPage() {
-  alert('直觉练习功能开发中...');
+  mainMenu.classList.add('hidden');
+  intuitionPage.style.display = 'flex';
+
+  // 初始化练习
+  setupIntuitionPractice();
+
+  console.log('[main] 进入直觉练习页面');
+}
+
+// 初始化直觉练习
+function setupIntuitionPractice() {
+  // 确保牌数据已加载
+  if (!allCards || allCards.length === 0) {
+    console.error('[intuition] 牌数据未加载');
+    return;
+  }
+
+  // 随机抽取 2 张不重复的牌
+  const shuffled = [...allCards].sort(() => Math.random() - 0.5);
+  intuitionCards = shuffled.slice(0, 2).map(card => ({
+    ...card,
+    isReversed: Math.random() < 0.5,  // 50% 逆位概率
+    isFlipped: false,
+    feelingSaved: false
+  }));
+
+  console.log('[intuition] 抽取牌:', intuitionCards.map(c => c.nameCN));
+
+  // 重置卡片 UI
+  const cardElements = [intuitionCard1, intuitionCard2];
+  cardElements.forEach((cardEl, index) => {
+    const cardData = intuitionCards[index];
+
+    // 重置翻转状态
+    cardEl.classList.remove('flipped', 'reversed');
+
+    // 设置牌面图片和名称
+    const cardImage = cardEl.querySelector('.card-image');
+    const cardName = cardEl.querySelector('.card-name');
+    cardImage.src = getCardImageUrl(cardData);
+    cardImage.alt = cardData.nameCN;
+    cardName.textContent = cardData.isReversed ? `${cardData.nameCN} (逆位)` : cardData.nameCN;
+
+    // 隐藏感受输入区域
+    const feelingArea = cardEl.querySelector('.card-feeling-area');
+    feelingArea.classList.add('hidden');
+
+    // 重置输入框
+    const feelingInput = cardEl.querySelector('.feeling-input');
+    feelingInput.value = '';
+    feelingInput.disabled = false;
+  });
+
+  // 隐藏保存按钮
+  intuitionSave.classList.add('hidden');
+  btnSaveFeelings.textContent = '保存感受';
+  btnSaveFeelings.disabled = false;
+
+  // 显示提示
+  intuitionHint.style.display = '';
+  intuitionHint.textContent = '点击牌背翻开塔罗牌';
+}
+
+// 翻转卡片
+function flipIntuitionCard(cardEl, cardIndex) {
+  const cardData = intuitionCards[cardIndex];
+
+  // 已翻转则忽略
+  if (cardData.isFlipped) return;
+
+  cardData.isFlipped = true;
+
+  // 添加翻转动画类
+  cardEl.classList.add('flipped');
+
+  // 如果是逆位，添加逆位类
+  if (cardData.isReversed) {
+    cardEl.classList.add('reversed');
+  }
+
+  // 显示感受输入区域
+  setTimeout(() => {
+    const feelingArea = cardEl.querySelector('.card-feeling-area');
+    feelingArea.classList.remove('hidden');
+  }, 600); // 等待翻转动画完成
+
+  // 更新提示
+  updateIntuitionHint();
+
+  console.log('[intuition] 翻开牌:', cardData.nameCN, cardData.isReversed ? '(逆位)' : '');
+}
+
+// 更新提示文字
+function updateIntuitionHint() {
+  const flippedCount = intuitionCards.filter(c => c.isFlipped).length;
+
+  if (flippedCount === 0) {
+    intuitionHint.textContent = '点击牌背翻开塔罗牌';
+    intuitionSave.classList.add('hidden');
+  } else if (flippedCount === 1) {
+    intuitionHint.textContent = '再翻开一张牌';
+    intuitionSave.classList.add('hidden');
+  } else {
+    // 两张牌都翻开后隐藏提示，显示保存按钮
+    intuitionHint.style.display = 'none';
+    intuitionSave.classList.remove('hidden');
+  }
+}
+
+// 保存所有感受
+function saveAllFeelings() {
+  const cardElements = [intuitionCard1, intuitionCard2];
+  let savedCount = 0;
+
+  cardElements.forEach((cardEl, index) => {
+    const cardData = intuitionCards[index];
+    const feelingInput = cardEl.querySelector('.feeling-input');
+    const feeling = feelingInput.value.trim();
+
+    // 跳过已保存或无输入的
+    if (cardData.feelingSaved || !feeling) return;
+
+    // 保存到 LocalStorage
+    const record = StorageService.addIntuitionRecord({
+      cardId: cardData.id,
+      cardName: cardData.nameCN,
+      cardImage: getCardImageUrl(cardData),
+      isReversed: cardData.isReversed,
+      feeling: feeling
+    });
+
+    if (record) {
+      cardData.feelingSaved = true;
+      feelingInput.disabled = true;
+      savedCount++;
+      console.log('[intuition] 保存感受:', cardData.nameCN, feeling);
+    }
+  });
+
+  if (savedCount > 0) {
+    btnSaveFeelings.textContent = '已保存 ✓';
+    btnSaveFeelings.disabled = true;
+  }
+}
+
+// 从直觉练习返回主菜单
+function hideIntuitionPage() {
+  intuitionPage.style.display = 'none';
+  mainMenu.classList.remove('hidden');
+}
+
+// 显示历史记录页面
+function showHistoryPage() {
+  intuitionPage.style.display = 'none';
+  historyPage.style.display = 'flex';
+
+  renderHistoryList();
+
+  console.log('[main] 进入直觉历史记录页面');
+}
+
+// 渲染历史记录列表
+function renderHistoryList() {
+  const records = StorageService.getIntuitionRecords();
+
+  if (records.length === 0) {
+    historyList.style.display = 'none';
+    historyEmpty.classList.remove('hidden');
+    return;
+  }
+
+  historyList.style.display = '';
+  historyEmpty.classList.add('hidden');
+
+  // 按日期倒序排列
+  const sortedRecords = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  // 渲染列表
+  historyList.innerHTML = sortedRecords.map(record => {
+    const date = new Date(record.date);
+    const dateStr = date.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const timeStr = date.toLocaleTimeString('zh-CN', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    return `
+      <div class="history-item">
+        <img class="history-card-img ${record.isReversed ? 'reversed' : ''}"
+             src="${record.cardImage}" alt="${record.cardName}">
+        <div class="history-content">
+          <div class="history-card-name">${record.cardName}${record.isReversed ? ' (逆位)' : ''}</div>
+          <div class="history-feeling">${escapeHtml(record.feeling)}</div>
+          <div class="history-date">${dateStr} ${timeStr}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// HTML 转义，防止 XSS
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// 从历史记录返回直觉练习
+function hideHistoryPage() {
+  historyPage.style.display = 'none';
+  intuitionPage.style.display = 'flex';
+}
+
+// 从历史记录直接返回主菜单
+function historyToMainMenu() {
+  historyPage.style.display = 'none';
+  mainMenu.classList.remove('hidden');
 }
 
 // 显示问题输入页面
@@ -525,7 +927,11 @@ function hideQuestionPage() {
 function startReadingFromQuestion() {
   // 保存用户输入的问题
   userQuestion = questionInput.value.trim();
-  console.log('[main] 用户问题:', userQuestion);
+
+  // 读取直觉数据开关状态
+  useIntuition = useIntuitionCheckbox.checked;
+
+  console.log('[main] 用户问题:', userQuestion, '| 注入直觉:', useIntuition);
 
   // 隐藏问题页面，显示占卜页面
   questionPage.style.display = 'none';
@@ -536,6 +942,32 @@ function startReadingFromQuestion() {
 btnReading.addEventListener('click', showQuestionPage);
 btnIntuition.addEventListener('click', showIntuitionPage);
 btnBack.addEventListener('click', showMainMenu);
+
+// 直觉练习页面事件
+btnBackIntuition.addEventListener('click', hideIntuitionPage);
+btnViewHistory.addEventListener('click', showHistoryPage);
+
+// 卡片点击翻转事件
+intuitionCard1.addEventListener('click', (e) => {
+  // 如果点击的是输入框或按钮，不触发翻转
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON') return;
+  flipIntuitionCard(intuitionCard1, 0);
+});
+
+intuitionCard2.addEventListener('click', (e) => {
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON') return;
+  flipIntuitionCard(intuitionCard2, 1);
+});
+
+// 感受保存按钮事件
+btnSaveFeelings.addEventListener('click', saveAllFeelings);
+
+// 历史记录页面事件
+btnBackHistory.addEventListener('click', hideHistoryPage);
+btnStartPractice.addEventListener('click', () => {
+  historyPage.style.display = 'none';
+  showIntuitionPage();
+});
 
 // 问题页面事件
 btnBackToMenu.addEventListener('click', hideQuestionPage);
@@ -557,8 +989,7 @@ btnEnableCamera.addEventListener('click', () => {
 
 btnUseMouse.addEventListener('click', () => {
   cameraFallback.classList.remove('visible');
-  // TODO: 启用鼠标交互模式
-  console.log('[main] 用户选择鼠标模式');
+  enableMouseMode();
 });
 
 // ============================================
@@ -814,6 +1245,15 @@ function renderResultCards() {
   });
 }
 
+// 获取选中牌的直觉记录
+// 返回值：null = 未启用，[] = 启用但无匹配数据，[...] = 有数据
+function getIntuitionContext(cards) {
+  if (!useIntuition) return null;  // null 表示未启用
+
+  const cardIds = cards.map(c => c.card.id);
+  return StorageService.getRecordsByCardIds(cardIds);  // 可能返回 []
+}
+
 // 调用 AI 解读
 async function callAIReading(followupQuestion = null) {
   const resultContent = document.querySelector('.result-content');
@@ -863,13 +1303,16 @@ async function callAIReading(followupQuestion = null) {
     // 确定问题内容
     const question = followupQuestion || userQuestion;
 
+    // 获取直觉记录（仅首次解读时，追问不重复传递）
+    const intuitionRecords = isFollowup ? [] : getIntuitionContext(selectedCards);
+
     // 收集完整响应
     let fullResponse = '';
 
-    // 调用 AI（追问时传递对话历史）
+    // 调用 AI（追问时传递对话历史，首次解读传递直觉记录）
     await aiService.getReading(question, cards, (chunk) => {
       fullResponse += chunk;
-    }, isFollowup ? conversationHistory : []);
+    }, isFollowup ? conversationHistory : [], intuitionRecords);
 
     // 更新对话历史
     if (isFollowup) {
@@ -897,8 +1340,35 @@ async function callAIReading(followupQuestion = null) {
       resultContent.scrollTop = resultContent.scrollHeight;
     } else {
       // 首次解读
-      resultReading.innerHTML = marked.parse(fullResponse);
       resultLoading.classList.remove('visible');
+
+      // 检测是否为无效输入引导消息
+      if (fullResponse.includes('抱歉，星际塔罗师没有听懂')) {
+        // 无效输入：显示引导消息 + 返回按钮
+        resultReading.innerHTML = marked.parse(fullResponse) +
+          '<div style="text-align: center; margin-top: 30px;">' +
+          '<button class="btn btn-primary" id="btn-rephrase">重新输入问题</button>' +
+          '</div>';
+        resultReading.classList.add('visible');
+
+        // 隐藏追问区域
+        document.querySelector('.result-footer').style.display = 'none';
+
+        // 绑定返回按钮事件
+        document.getElementById('btn-rephrase').addEventListener('click', () => {
+          // 返回提问页
+          resultPage.style.display = 'none';
+          questionPage.style.display = 'flex';
+          // 恢复追问区域显示
+          document.querySelector('.result-footer').style.display = '';
+          // 清空之前的输入
+          questionInput.value = '';
+          questionInput.focus();
+        });
+        return;
+      }
+
+      resultReading.innerHTML = marked.parse(fullResponse);
       resultReading.classList.add('visible');
     }
 
@@ -950,9 +1420,12 @@ function resultToHome() {
 btnBackResult.addEventListener('click', hideResultPage);
 btnResultHome.addEventListener('click', resultToHome);
 
-// 重试按钮
+// 重试按钮 → 返回提问页面重新开始
 btnRetry.addEventListener('click', () => {
-  callAIReading();
+  resultPage.style.display = 'none';
+  questionPage.style.display = 'flex';
+  questionInput.value = '';
+  questionInput.focus();
 });
 
 // 追问输入监听

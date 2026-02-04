@@ -15,6 +15,7 @@ export class TarotScene {
     this.animationId = null;
     this.clock = new THREE.Clock();
     this.debugControls = null; // 调试控制器
+    this.updateCallbacks = []; // 外部更新回调
 
     this.init();
   }
@@ -117,6 +118,19 @@ export class TarotScene {
     this.debugControls = debugControls;
   }
 
+  // 添加外部更新回调
+  addUpdateCallback(callback) {
+    this.updateCallbacks.push(callback);
+  }
+
+  // 移除外部更新回调
+  removeUpdateCallback(callback) {
+    const index = this.updateCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.updateCallbacks.splice(index, 1);
+    }
+  }
+
   start() {
     this.animate();
   }
@@ -135,6 +149,9 @@ export class TarotScene {
     if (this.starRing) {
       this.starRing.update(delta);
     }
+
+    // 调用外部更新回调
+    this.updateCallbacks.forEach(callback => callback(delta));
 
     this.renderer.render(this.scene, this.camera);
   }
