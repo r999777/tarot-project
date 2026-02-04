@@ -42,6 +42,15 @@ export class MouseController {
     this.onClick = this.onClick.bind(this);
     this.update = this.update.bind(this);
 
+    // 触摸事件绑定
+    this.onTouchStart = this.onTouchStart.bind(this);
+    this.onTouchMove = this.onTouchMove.bind(this);
+    this.onTouchEnd = this.onTouchEnd.bind(this);
+
+    // 触摸状态
+    this.touchStartTime = 0;
+    this.touchStartPos = { x: 0, y: 0 };
+
     console.log('[mouse-controller] 初始化完成');
   }
 
@@ -55,6 +64,11 @@ export class MouseController {
     canvas.addEventListener('mouseup', this.onMouseUp);
     canvas.addEventListener('mouseleave', this.onMouseLeave);
     canvas.addEventListener('click', this.onClick);
+
+    // 触摸事件
+    canvas.addEventListener('touchstart', this.onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', this.onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', this.onTouchEnd, { passive: false });
 
     // 改变鼠标样式
     canvas.style.cursor = 'grab';
@@ -77,6 +91,11 @@ export class MouseController {
     canvas.removeEventListener('mouseup', this.onMouseUp);
     canvas.removeEventListener('mouseleave', this.onMouseLeave);
     canvas.removeEventListener('click', this.onClick);
+
+    // 移除触摸事件
+    canvas.removeEventListener('touchstart', this.onTouchStart);
+    canvas.removeEventListener('touchmove', this.onTouchMove);
+    canvas.removeEventListener('touchend', this.onTouchEnd);
 
     // 恢复鼠标样式
     canvas.style.cursor = 'default';
@@ -190,6 +209,99 @@ export class MouseController {
     }
   }
 
+  // ========== 触摸事件处理 ==========
+
+  // 从触摸事件更新坐标
+  updateTouchCoords(touch) {
+    const rect = this.scene.renderer.domElement.getBoundingClientRect();
+    this.mouse.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+  }
+
+  onTouchStart(event) {
+    if (!this.isEnabled) return;
+    event.preventDefault();  // 防止页面滚动
+
+    const touch = event.touches[0];
+    this.touchStartTime = Date.now();
+    this.touchStartPos = { x: touch.clientX, y: touch.clientY };
+
+    this.isDragging = true;
+    this.dragStartX = touch.clientX;
+    this.lastDragX = touch.clientX;
+    this.dragVelocity = 0;
+    this.inertiaVelocity = 0;
+
+    // 暂停星环自动旋转
+    if (this.starRing) {
+      this.starRing.setEnabled(false);
+    }
+
+    console.log('[mouse-controller] touchstart');
+  }
+
+  onTouchMove(event) {
+    if (!this.isEnabled || !this.isDragging) return;
+    event.preventDefault();
+
+    const touch = event.touches[0];
+
+    // 计算水平位移控制旋转
+    const deltaX = touch.clientX - this.lastDragX;
+    this.dragVelocity = deltaX * 0.002;
+
+    // 直接旋转星环
+    if (this.starRing && this.starRing.ringGroup) {
+      this.starRing.ringGroup.rotation.y += this.dragVelocity;
+    }
+
+    this.lastDragX = touch.clientX;
+  }
+
+  onTouchEnd(event) {
+    if (!this.isEnabled) return;
+    event.preventDefault();
+
+    const touchDuration = Date.now() - this.touchStartTime;
+    const touchEndX = event.changedTouches[0].clientX;
+    const touchEndY = event.changedTouches[0].clientY;
+    const moveDistance = Math.sqrt(
+      Math.pow(touchEndX - this.touchStartPos.x, 2) +
+      Math.pow(touchEndY - this.touchStartPos.y, 2)
+    );
+
+    // 判断是否为点击（短时间 + 小位移）
+    const isTap = touchDuration < 300 && moveDistance < 20;
+
+    if (isTap) {
+      // 点击选牌
+      this.updateTouchCoords(event.changedTouches[0]);
+      const card = this.getCardUnderMouse();
+      if (card) {
+        console.log('[mouse-controller] 触摸选牌:', card.userData.cardData?.nameCN);
+        this.onCardSelect(card);
+      }
+    }
+
+    // 结束拖拽
+    if (this.isDragging) {
+      this.isDragging = false;
+
+      // 设置惯性速度
+      this.inertiaVelocity = this.dragVelocity * 3;
+
+      // 如果惯性很小，立即恢复自动旋转
+      if (Math.abs(this.inertiaVelocity) <= this.minInertia) {
+        this.inertiaVelocity = 0;
+        if (this.starRing) {
+          this.starRing.setEnabled(true);
+        }
+      }
+    }
+
+    console.log('[mouse-controller] touchend, isTap:', isTap);
+  }
+
   // 检测鼠标下的牌
   getCardUnderMouse() {
     if (!this.starRing || !this.scene) return null;
@@ -290,6 +402,11 @@ export class MouseController {
   dispose() {
     this.disable();
   }
+}
+
+// 检测是否为触摸设备
+export function isTouchDevice() {
+  return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 }
 
 console.log('[mouse-controller.js] 模块加载完成');

@@ -13,7 +13,7 @@ import { CardAnimator } from './card-animations.js';
 import { DebugControls } from './debug-controls.js';
 import { StorageService } from './storage.js';
 import { AIService } from './ai-service.js';
-import { MouseController } from './mouse-controller.js';
+import { MouseController, isTouchDevice } from './mouse-controller.js';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -104,7 +104,6 @@ const btnBackIntuition = document.getElementById('btn-back-intuition');
 const intuitionCard1 = document.getElementById('intuition-card-1');
 const intuitionCard2 = document.getElementById('intuition-card-2');
 const intuitionHint = document.querySelector('.intuition-hint');
-const intuitionSave = document.getElementById('intuition-save');
 const btnSaveFeelings = document.getElementById('btn-save-feelings');
 const btnViewHistory = document.getElementById('btn-view-history');
 
@@ -422,7 +421,8 @@ function showGrabCancelHint() {
 // ============================================
 
 // 启用鼠标模式
-function enableMouseMode() {
+// showHint: 是否显示操作提示（触摸设备会显示触摸专用提示，所以传 false）
+function enableMouseMode(showHint = true) {
   isMouseMode = true;
   console.log('[main] 启用鼠标模式, scene:', !!scene, 'starRing:', !!starRing);
 
@@ -457,8 +457,10 @@ function enableMouseMode() {
     console.warn('[main] mouseController 不存在，无法启用');
   }
 
-  // 显示鼠标模式提示（可选）
-  showMouseModeHint();
+  // 显示鼠标模式提示（触摸设备会显示触摸专用提示）
+  if (showHint) {
+    showMouseModeHint();
+  }
 }
 
 // 禁用鼠标模式
@@ -562,6 +564,39 @@ function showMouseModeHint() {
   }, 3000);
 }
 
+// 显示触摸模式提示（移动端）
+function showTouchModeHint() {
+  const container = document.createElement('div');
+  container.id = 'touch-mode-hint';
+  container.style.cssText = `
+    position: fixed;
+    bottom: 280px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    animation: fadeInUp 0.5s ease;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 14px 28px;
+    border-radius: 25px;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    color: var(--text-main);
+    box-shadow: 0 0 15px rgba(123, 94, 167, 0.4);
+    text-align: center;
+  `;
+
+  container.textContent = '点击牌面 · 选择你的指引';
+
+  document.body.appendChild(container);
+
+  // 3秒后淡出
+  setTimeout(() => {
+    container.style.transition = 'opacity 0.5s ease';
+    container.style.opacity = '0';
+    setTimeout(() => container.remove(), 500);
+  }, 3000);
+}
+
 // 显示占卜页面
 async function showReadingPage() {
   mainMenu.classList.add('hidden');
@@ -610,8 +645,16 @@ async function showReadingPage() {
   await new Promise(resolve => setTimeout(resolve, 2000));
   shuffleHint.classList.remove('visible');
 
-  // 牌显示后，显示抓牌方式选择界面
-  cameraFallback.classList.add('visible');
+  // 牌显示后，检测设备类型
+  if (isTouchDevice()) {
+    // 触摸设备：跳过选择，直接进入触摸模式
+    console.log('[main] 检测到触摸设备，自动启用触摸模式');
+    enableMouseMode(false);  // 不显示鼠标提示，下面会显示触摸专用提示
+    showTouchModeHint();
+  } else {
+    // 桌面设备：显示抓牌方式选择界面
+    cameraFallback.classList.add('visible');
+  }
 }
 
 // 重置 UI
@@ -734,8 +777,7 @@ function setupIntuitionPractice() {
     feelingInput.disabled = false;
   });
 
-  // 隐藏保存按钮
-  intuitionSave.classList.add('hidden');
+  // 重置保存按钮状态
   btnSaveFeelings.textContent = '保存感受';
   btnSaveFeelings.disabled = false;
 
@@ -779,14 +821,11 @@ function updateIntuitionHint() {
 
   if (flippedCount === 0) {
     intuitionHint.textContent = '点击牌背翻开塔罗牌';
-    intuitionSave.classList.add('hidden');
   } else if (flippedCount === 1) {
     intuitionHint.textContent = '再翻开一张牌';
-    intuitionSave.classList.add('hidden');
   } else {
-    // 两张牌都翻开后隐藏提示，显示保存按钮
+    // 两张牌都翻开后隐藏提示
     intuitionHint.style.display = 'none';
-    intuitionSave.classList.remove('hidden');
   }
 }
 

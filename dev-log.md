@@ -610,3 +610,15 @@ RING_ROTATION_FAST: 10000ms (加速时)
 - 洗牌动画时长优化
   - 紫色粒子动画从 1800ms 缩短到 1200ms
   - 整体过渡更快速流畅
+
+### 2026-02-04 (移动端适配优化)
+- 移动端横屏布局优化
+  - 星环页面底部面板（卡槽 + 揭示命运按钮）上移 55px
+  - 媒体查询条件：`max-height: 500px` + `orientation: landscape`
+- iPad 横屏布局优化
+  - 新增 iPad 横屏媒体查询：`min-width: 768px` ~ `max-width: 1366px` + `orientation: landscape`
+  - 底部面板上移 35px
+- 直觉练习页面 UI 优化
+  - 「保存感受」和「查看历史记录」按钮改为并列显示
+  - 两个按钮一直显示（移除条件隐藏逻辑）
+  - 「查看历史记录」按钮改为金色样式 `btn-secondary`

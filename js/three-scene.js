@@ -52,6 +52,23 @@ export class TarotScene {
     // 监听窗口变化
     window.addEventListener('resize', () => this.onResize());
 
+    // iOS Safari 的 orientationchange 事件
+    window.addEventListener('orientationchange', () => {
+      // 多次延迟触发 resize 以等待视口完全稳定
+      setTimeout(() => this.onResize(), 100);
+      setTimeout(() => this.onResize(), 300);
+      setTimeout(() => this.onResize(), 500);
+    });
+
+    // 监听 visualViewport 变化（iOS Safari 地址栏显示/隐藏）
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => this.onResize());
+    }
+
+    // 移动端初始化时延迟触发 resize，确保尺寸正确
+    setTimeout(() => this.onResize(), 50);
+    setTimeout(() => this.onResize(), 200);
+
     console.log('[three-scene] 场景初始化完成');
   }
 
@@ -157,12 +174,23 @@ export class TarotScene {
   }
 
   onResize() {
-    const width = this.container.clientWidth;
-    const height = this.container.clientHeight;
+    // 使用 visualViewport（更准确）或 container 尺寸
+    let width = this.container.clientWidth;
+    let height = this.container.clientHeight;
 
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height);
+    // 如果容器尺寸为 0，使用 window 尺寸作为后备
+    if (width === 0 || height === 0) {
+      width = window.innerWidth;
+      height = window.innerHeight;
+    }
+
+    // 确保有有效尺寸
+    if (width > 0 && height > 0) {
+      this.camera.aspect = width / height;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(width, height);
+      console.log('[three-scene] resize:', width, 'x', height);
+    }
   }
 
   dispose() {
