@@ -622,3 +622,10 @@ RING_ROTATION_FAST: 10000ms (加速时)
   - 「保存感受」和「查看历史记录」按钮改为并列显示
   - 两个按钮一直显示（移除条件隐藏逻辑）
   - 「查看历史记录」按钮改为金色样式 `btn-secondary`
+
+### 2026-02-04 (网站部署)
+- Vercel 部署完成
+  - 仓库：GitHub tarot-project
+  - 临时域名：https://mytarot-project.vercel.app
+  - 状态：已上线运行
+- 待办：绑定阿里云自定义域名（国内访问优化）
