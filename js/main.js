@@ -1462,15 +1462,15 @@ async function callAIReading(followupQuestion = null) {
       fullResponse += chunk;
     }, isFollowup ? conversationHistory : [], intuitionRecords, overrideKey);
 
-    // 使用内置 Key 时，首次解读计数（追问不计数，无效输入也计数防滥用）
-    if (useBuiltin && !isFollowup) {
+    // 检测是否为无效输入
+    const isInvalidInput = fullResponse.includes('抱歉，星际塔罗师没有听懂');
+
+    // 使用内置 Key 时，首次有效解读才计数（追问和无效输入不计数）
+    if (useBuiltin && !isFollowup && !isInvalidInput) {
       StorageService.incrementUsageCount();
       updateApiHintVisibility();
       console.log('[main] 内置 Key 使用次数:', StorageService.getUsageCount());
     }
-
-    // 检测是否为无效输入
-    const isInvalidInput = fullResponse.includes('抱歉，星际塔罗师没有听懂');
 
     // 更新对话历史
     if (isFollowup) {
