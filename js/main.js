@@ -5,16 +5,16 @@
 console.log('[main] 应用启动');
 
 // 导入模块
-import { TarotScene } from './three-scene.js';
-import { StarRing } from './star-ring.js';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js';
-import { GestureController } from './gesture.js';
-import { CardAnimator } from './card-animations.js?v=9';
-import { DebugControls } from './debug-controls.js';
-import { StorageService } from './storage.js';
-import { AIService } from './ai-service.js';
-import { MouseController, isTouchDevice } from './mouse-controller.js';
-import { CONFIG } from './config.js';
+import { TarotScene } from './three-scene.js?v=10';
+import { StarRing } from './star-ring.js?v=10';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=10';
+import { GestureController } from './gesture.js?v=10';
+import { CardAnimator } from './card-animations.js?v=10';
+import { DebugControls } from './debug-controls.js?v=10';
+import { StorageService } from './storage.js?v=10';
+import { AIService } from './ai-service.js?v=10';
+import { MouseController, isTouchDevice } from './mouse-controller.js?v=10';
+import { CONFIG } from './config.js?v=10';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -1546,6 +1546,13 @@ async function callAIReading(followupQuestion = null) {
 
   } catch (error) {
     console.error('[main] AI 解读失败:', error);
+
+    // 无效输入被 throw 到 catch：首次解读 + 内置 Key → 也扣次数
+    if (!isFollowup && isUsingBuiltinKey() && error.message === CONFIG.INVALID_INPUT_MESSAGE) {
+      StorageService.incrementUsageCount();
+      updateApiHintVisibility();
+      console.log('[main] catch 中扣次数，当前:', StorageService.getUsageCount());
+    }
 
     if (isFollowup) {
       // 移除加载状态，显示错误
