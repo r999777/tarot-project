@@ -45,6 +45,24 @@ export const CONFIG = {
     GEMINI: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent',
   },
 
+  // 内置 API Key（免配置体验）
+  DEFAULT_API_KEY: 'AIzaSyBLVJC2UYXJjbZr5WgwFbnT6L_woyYv34s',
+  DEFAULT_API_PROVIDER: 'gemini',
+
+  // 免费使用次数
+  MAX_FREE_USES: 3,
+
+  // 兑换码列表（码 → 增加次数）
+  REDEEM_CODES: {
+    'STAR-7721': 3,
+    'STAR-4458': 3,
+    'STAR-9136': 3,
+    'STAR-3067': 3,
+    'STAR-8294': 3,
+    'STAR-5510': 3,
+    'STAR-6843': 3,
+  },
+
   // ============================================================
   // 问题类型关键词配置
   // ============================================================

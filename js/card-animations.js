@@ -40,14 +40,22 @@ export class CardAnimator {
 
   // 创建 3D 卡槽
   createSlots() {
-    const slotWidth = 1.4;
-    const slotHeight = 2.4;
+    // 手机竖屏缩小卡槽
+    const isMobile = window.innerWidth <= 768;
+    const isIPad = !isMobile && window.innerWidth <= 1366 && window.innerWidth >= 768 && 'ontouchstart' in window;
+    const slotWidth = isMobile ? 1.0 : 1.4;
+    const slotHeight = isMobile ? 1.6 : 2.4;
 
-    // 固定卡槽位置（调试模式下调整后的最终值）
-    const slotPositions = [
-      { x: -2.40, y: -2.50, z: -1.00 },  // 卡槽1：过去
-      { x: 0.10, y: -2.50, z: -1.00 },   // 卡槽2：现在
-      { x: 2.40, y: -2.50, z: -1.00 },   // 卡槽3：未来
+    // 固定卡槽位置（手机端缩小间距，iPad 上移）
+    const slotY = isMobile ? -2.50 : isIPad ? -2.15 : -2.50;
+    const slotPositions = isMobile ? [
+      { x: -1.40, y: -2.50, z: -1.00 },  // 卡槽1：过去
+      { x: 0.00, y: -2.50, z: -1.00 },   // 卡槽2：现在
+      { x: 1.40, y: -2.50, z: -1.00 },   // 卡槽3：未来
+    ] : [
+      { x: -2.40, y: slotY, z: -1.00 },  // 卡槽1：过去
+      { x: 0.10, y: slotY, z: -1.00 },   // 卡槽2：现在
+      { x: 2.40, y: slotY, z: -1.00 },   // 卡槽3：未来
     ];
 
     for (let i = 0; i < 3; i++) {
@@ -740,8 +748,10 @@ export class CardAnimator {
 
       const startPos = this.cardMesh.position.clone();
       const startScale = this.cardMesh.scale.clone();
-      // 缩放到卡槽大小 (卡槽 1.4x2.4，卡牌 1.8x3.0)
-      const scaleRatio = 1.4 / 1.8;
+      // 缩放到卡槽大小（卡牌原始 1.8x3.0）
+      const isMobile = window.innerWidth <= 768;
+      const slotW = isMobile ? 1.0 : 1.4;
+      const scaleRatio = slotW / 1.8;
       const targetScale = new THREE.Vector3(scaleRatio, scaleRatio, scaleRatio);
 
       // 保存初始旋转（Y轴用于翻转后状态，Z轴用于逆位）
@@ -780,7 +790,10 @@ export class CardAnimator {
   getDisplayPosition() {
     // 卡槽位置：y=-2.50, z=-1.00
     // 展示位置：z=0.5，y往下调避免被星环遮挡
-    return new THREE.Vector3(0, -1.6, 0.5);
+    const isMobile = window.innerWidth <= 768;
+    return isMobile
+      ? new THREE.Vector3(0, -1.8, 0.5)
+      : new THREE.Vector3(0, -1.6, 0.5);
   }
 
   // 获取屏幕中心的世界坐标（保留兼容）

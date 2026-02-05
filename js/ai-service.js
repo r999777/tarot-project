@@ -373,10 +373,15 @@ export class AIService {
 
   // 获取解读（主入口）
   // intuitionRecords: 外部传入的直觉记录，由调用方控制是否包含
-  async getReading(question, cards, onChunk, conversationHistory = [], intuitionRecords = []) {
+  // overrideKey: 可选，外部传入的 API Key（用于内置 Key 场景）
+  async getReading(question, cards, onChunk, conversationHistory = [], intuitionRecords = [], overrideKey = null) {
     const settings = StorageService.getSettings();
 
-    if (!settings.apiKey || !settings.apiKeyVerified) {
+    // 确定使用的 API Key 和 Provider
+    const apiKey = overrideKey || settings.apiKey;
+    const apiProvider = overrideKey ? CONFIG.DEFAULT_API_PROVIDER : settings.aiProvider;
+
+    if (!apiKey) {
       throw new Error('请先在设置中配置并验证 API Key');
     }
 
@@ -391,10 +396,10 @@ export class AIService {
     // 获取问题类型和对应的 system prompt
     let questionType, systemPrompt;
 
-    if (settings.aiProvider === 'gemini' && !isFollowup) {
+    if (apiProvider === 'gemini' && !isFollowup) {
       // Gemini 首次解读：使用 AI 分类器（temperature=0）
       console.log('[AI] Gemini 意图分类中...');
-      questionType = await this.classifyQuestionWithAI(settings.apiKey, question);
+      questionType = await this.classifyQuestionWithAI(apiKey, question);
       console.log('[AI] 分类结果:', questionType);
 
       // 无效输入：直接返回引导消息（不作为错误）
@@ -433,20 +438,20 @@ export class AIService {
         { role: 'user', content: question }
       ];
 
-      if (settings.aiProvider === 'claude') {
-        await this.callClaudeWithHistory(settings.apiKey, messages, systemPrompt, onChunk);
+      if (apiProvider === 'claude') {
+        await this.callClaudeWithHistory(apiKey, messages, systemPrompt, onChunk);
       } else {
-        await this.callGeminiWithHistory(settings.apiKey, messages, systemPrompt, onChunk);
+        await this.callGeminiWithHistory(apiKey, messages, systemPrompt, onChunk);
       }
     } else {
       // 首次解读：构建完整的牌面信息
       const userMessage = this.buildUserMessage(question, cards, intuitionRecords);
 
-      if (settings.aiProvider === 'claude') {
-        await this.callClaude(settings.apiKey, userMessage, systemPrompt, onChunk);
+      if (apiProvider === 'claude') {
+        await this.callClaude(apiKey, userMessage, systemPrompt, onChunk);
       } else {
         // Gemini 使用 temperature=1.2 进行创意解读
-        await this.callGemini(settings.apiKey, userMessage, systemPrompt, onChunk);
+        await this.callGemini(apiKey, userMessage, systemPrompt, onChunk);
       }
     }
   }

@@ -9,11 +9,12 @@ import { TarotScene } from './three-scene.js';
 import { StarRing } from './star-ring.js';
 import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js';
 import { GestureController } from './gesture.js';
-import { CardAnimator } from './card-animations.js';
+import { CardAnimator } from './card-animations.js?v=8';
 import { DebugControls } from './debug-controls.js';
 import { StorageService } from './storage.js';
 import { AIService } from './ai-service.js';
 import { MouseController, isTouchDevice } from './mouse-controller.js';
+import { CONFIG } from './config.js';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -522,7 +523,13 @@ async function onMouseCardSelect(cardMesh) {
 
 // 显示鼠标模式提示
 function showMouseModeHint() {
-  // 创建容器（两个框水平并列）
+  // 触屏设备只显示单个提示
+  if (isTouchDevice()) {
+    showTouchModeHint();
+    return;
+  }
+
+  // 桌面端：两个框水平并列
   const container = document.createElement('div');
   container.id = 'mouse-mode-hint';
   container.style.cssText = `
@@ -536,7 +543,6 @@ function showMouseModeHint() {
     animation: fadeInUp 0.5s ease;
   `;
 
-  // 通用框样式
   const boxStyle = `
     background: rgba(255, 255, 255, 0.9);
     padding: 12px 24px;
@@ -556,7 +562,6 @@ function showMouseModeHint() {
 
   document.body.appendChild(container);
 
-  // 3秒后淡出
   setTimeout(() => {
     container.style.transition = 'opacity 0.5s ease';
     container.style.opacity = '0';
@@ -569,12 +574,12 @@ function showTouchModeHint() {
   const container = document.createElement('div');
   container.id = 'touch-mode-hint';
   container.style.cssText = `
-    position: fixed;
-    bottom: 280px;
+    position: absolute;
+    top: 42%;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
     z-index: 100;
-    animation: fadeInUp 0.5s ease;
+    animation: fadeIn 0.5s ease;
     background: rgba(255, 255, 255, 0.9);
     padding: 14px 28px;
     border-radius: 25px;
@@ -587,7 +592,9 @@ function showTouchModeHint() {
 
   container.textContent = '点击牌面 · 选择你的指引';
 
-  document.body.appendChild(container);
+  // 挂到 reading-page 而非 body（配合 position: absolute）
+  const readingPage = document.getElementById('reading-page');
+  readingPage.appendChild(container);
 
   // 3秒后淡出
   setTimeout(() => {
@@ -645,16 +652,11 @@ async function showReadingPage() {
   await new Promise(resolve => setTimeout(resolve, 2000));
   shuffleHint.classList.remove('visible');
 
-  // 牌显示后，检测设备类型
+  // 牌显示后，显示抓牌方式选择界面（移动端和桌面端统一）
   if (isTouchDevice()) {
-    // 触摸设备：跳过选择，直接进入触摸模式
-    console.log('[main] 检测到触摸设备，自动启用触摸模式');
-    enableMouseMode(false);  // 不显示鼠标提示，下面会显示触摸专用提示
-    showTouchModeHint();
-  } else {
-    // 桌面设备：显示抓牌方式选择界面
-    cameraFallback.classList.add('visible');
+    btnUseMouse.textContent = '触屏点击 · 触碰命运';
   }
+  cameraFallback.classList.add('visible');
 }
 
 // 重置 UI
@@ -688,7 +690,7 @@ function resetUI() {
   fallbackTitle.textContent = '请选择抓牌方式';
   btnEnableCamera.style.display = '';
   btnEnableCamera.textContent = '开启摄像头 · 手势抓牌';
-  btnUseMouse.textContent = '鼠标点击 · 触碰命运';
+  btnUseMouse.textContent = isTouchDevice() ? '触屏点击 · 触碰命运' : '鼠标点击 · 触碰命运';
   // 重置洗牌提示状态
   shuffleText.classList.remove('fade-out');
   shuffleStar.classList.remove('fade-out');
@@ -1040,24 +1042,21 @@ function openSettings() {
   // 加载当前设置
   const settings = StorageService.getSettings();
   aiProviderSelect.value = settings.aiProvider;
-  apiKeyInput.value = settings.apiKey;
+
+  // 内置 Key 模式：禁用 API Key 输入（暂不支持自定义 Key）
+  apiKeyInput.value = '';
+  apiKeyInput.placeholder = '●●●●●●●● 内置体验 Key';
+  apiKeyInput.disabled = true;
+  verifyBtn.textContent = '体验中';
+  verifyBtn.classList.add('verified');
+  verifyBtn.disabled = true;
+  settingsSaveBtn.disabled = true;
+  apiStatus.textContent = '';
+  // 隐藏 AI 提供商选择
+  aiProviderSelect.disabled = true;
 
   // 更新提示链接
   updateApiHint(settings.aiProvider);
-
-  // 更新验证按钮状态
-  if (settings.apiKeyVerified && settings.apiKey) {
-    verifyBtn.textContent = '已验证';
-    verifyBtn.classList.add('verified');
-    settingsSaveBtn.disabled = false;
-    apiStatus.textContent = 'API Key 已验证通过';
-    apiStatus.className = 'settings-status success';
-  } else {
-    verifyBtn.textContent = '验证';
-    verifyBtn.classList.remove('verified');
-    settingsSaveBtn.disabled = true;
-    apiStatus.textContent = '';
-  }
 
   settingsModal.classList.add('visible');
 }
@@ -1065,6 +1064,12 @@ function openSettings() {
 // 关闭设置弹窗
 function closeSettings() {
   settingsModal.classList.remove('visible');
+  // 清空兑换码状态
+  const redeemStatus = document.getElementById('redeem-status');
+  if (redeemStatus) {
+    redeemStatus.textContent = '';
+    redeemStatus.className = 'redeem-status';
+  }
 }
 
 // 更新 API 提示链接
@@ -1156,20 +1161,72 @@ function updateApiHintVisibility() {
   const isConfigured = StorageService.isAPIConfigured();
   if (isConfigured) {
     apiHintPanel.classList.remove('visible');
+    apiHintPanel.innerHTML = '';
   } else {
-    apiHintPanel.classList.add('visible');
+    // 使用内置 Key：显示剩余次数
+    const remaining = StorageService.getRemainingUses(CONFIG.MAX_FREE_USES);
+    if (remaining > 0) {
+      apiHintPanel.classList.add('visible');
+      apiHintPanel.innerHTML = `体验模式：剩余 <strong>${remaining}</strong> 次`;
+      apiHintPanel.style.color = '#C9A962';
+    } else {
+      apiHintPanel.classList.add('visible');
+      apiHintPanel.innerHTML = `体验次数已用完，请 <a id="open-settings-link-hint">配置 API</a> 或输入兑换码`;
+      const link = document.getElementById('open-settings-link-hint');
+      if (link) link.addEventListener('click', openSettings);
+    }
   }
+}
+
+// 判断是否使用内置 Key（用户未配置自己的 Key）
+function isUsingBuiltinKey() {
+  return !StorageService.isAPIConfigured();
 }
 
 // 检查是否可以揭示命运
 function checkCanReveal() {
-  const isConfigured = StorageService.isAPIConfigured();
-  if (!isConfigured) {
-    // 打开设置弹窗
-    openSettings();
-    return false;
+  if (isUsingBuiltinKey()) {
+    // 使用内置 Key：检查剩余次数
+    const remaining = StorageService.getRemainingUses(CONFIG.MAX_FREE_USES);
+    if (remaining <= 0) {
+      showUsageExhausted();
+      return false;
+    }
+    return true;
   }
+  // 用户自己配置了 Key：不限次数
   return true;
+}
+
+// 显示次数用尽提示
+function showUsageExhausted() {
+  // 创建弹窗提示
+  const overlay = document.createElement('div');
+  overlay.className = 'usage-exhausted-overlay';
+  overlay.innerHTML = `
+    <div class="usage-exhausted-modal">
+      <h3>✨ 体验次数已用完</h3>
+      <p>你可以通过以下方式继续使用：</p>
+      <div class="usage-exhausted-actions">
+        <button class="btn btn-primary" id="btn-redeem-code">输入兑换码</button>
+        <button class="btn btn-secondary" id="btn-own-key">配置自己的 API Key</button>
+      </div>
+      <button class="usage-exhausted-close" id="btn-exhaust-close">关闭</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  document.getElementById('btn-redeem-code').addEventListener('click', () => {
+    overlay.remove();
+    openSettings();
+  });
+  document.getElementById('btn-own-key').addEventListener('click', () => {
+    overlay.remove();
+    openSettings();
+  });
+  document.getElementById('btn-exhaust-close').addEventListener('click', () => {
+    overlay.remove();
+  });
 }
 
 // 设置事件绑定
@@ -1207,6 +1264,52 @@ apiKeyInput.addEventListener('input', () => {
 
 // 验证按钮
 verifyBtn.addEventListener('click', verifyApiKey);
+
+// 兑换码功能
+function handleRedeemCode() {
+  const redeemInput = document.getElementById('redeem-code-input');
+  const redeemStatus = document.getElementById('redeem-status');
+  if (!redeemInput || !redeemStatus) return;
+
+  const code = redeemInput.value.trim().toUpperCase();
+  if (!code) {
+    redeemStatus.textContent = '请输入兑换码';
+    redeemStatus.className = 'redeem-status error';
+    return;
+  }
+
+  // 检查兑换码是否有效
+  const addUses = CONFIG.REDEEM_CODES[code];
+  if (!addUses) {
+    redeemStatus.textContent = '兑换码无效';
+    redeemStatus.className = 'redeem-status error';
+    return;
+  }
+
+  // 兑换
+  const result = StorageService.redeemCode(code, addUses);
+  if (result.success) {
+    const remaining = StorageService.getRemainingUses(CONFIG.MAX_FREE_USES);
+    redeemStatus.textContent = `兑换成功！增加 ${addUses} 次，剩余 ${remaining} 次`;
+    redeemStatus.className = 'redeem-status success';
+    redeemInput.value = '';
+    updateApiHintVisibility();
+    // 3秒后自动消失
+    setTimeout(() => { redeemStatus.textContent = ''; redeemStatus.className = 'redeem-status'; }, 3000);
+  } else {
+    redeemStatus.textContent = result.reason;
+    redeemStatus.className = 'redeem-status error';
+    // 3秒后自动消失
+    setTimeout(() => { redeemStatus.textContent = ''; redeemStatus.className = 'redeem-status'; }, 3000);
+  }
+}
+
+// 兑换码按钮事件（延迟绑定，因为 DOM 在设置弹窗中）
+document.addEventListener('click', (e) => {
+  if (e.target.id === 'btn-redeem') {
+    handleRedeemCode();
+  }
+});
 
 // 保存按钮
 settingsSaveBtn.addEventListener('click', saveSettings);
@@ -1327,8 +1430,10 @@ async function callAIReading(followupQuestion = null) {
     resultLoading.classList.add('visible');
     resultError.classList.remove('visible');
     resultReading.classList.remove('visible');
-    // 重置对话历史
+    // 重置对话历史和追问状态
     conversationHistory = [];
+    followupInput.disabled = true;
+    followupInput.placeholder = '等待解读完成...';
   }
 
   try {
@@ -1348,10 +1453,24 @@ async function callAIReading(followupQuestion = null) {
     // 收集完整响应
     let fullResponse = '';
 
+    // 确定是否使用内置 Key
+    const useBuiltin = isUsingBuiltinKey();
+    const overrideKey = useBuiltin ? CONFIG.DEFAULT_API_KEY : null;
+
     // 调用 AI（追问时传递对话历史，首次解读传递直觉记录）
     await aiService.getReading(question, cards, (chunk) => {
       fullResponse += chunk;
-    }, isFollowup ? conversationHistory : [], intuitionRecords);
+    }, isFollowup ? conversationHistory : [], intuitionRecords, overrideKey);
+
+    // 使用内置 Key 时，首次解读计数（追问不计数，无效输入也计数防滥用）
+    if (useBuiltin && !isFollowup) {
+      StorageService.incrementUsageCount();
+      updateApiHintVisibility();
+      console.log('[main] 内置 Key 使用次数:', StorageService.getUsageCount());
+    }
+
+    // 检测是否为无效输入
+    const isInvalidInput = fullResponse.includes('抱歉，星际塔罗师没有听懂');
 
     // 更新对话历史
     if (isFollowup) {
@@ -1382,7 +1501,7 @@ async function callAIReading(followupQuestion = null) {
       resultLoading.classList.remove('visible');
 
       // 检测是否为无效输入引导消息
-      if (fullResponse.includes('抱歉，星际塔罗师没有听懂')) {
+      if (isInvalidInput) {
         // 无效输入：显示引导消息 + 返回按钮
         resultReading.innerHTML = marked.parse(fullResponse) +
           '<div style="text-align: center; margin-top: 30px;">' +
@@ -1411,10 +1530,19 @@ async function callAIReading(followupQuestion = null) {
       resultReading.classList.add('visible');
     }
 
-    // 启用追问输入
-    followupInput.disabled = false;
+    // 检查追问次数（对话历史每 2 条 = 1 轮，第 1 轮是首次解读）
+    const followupCount = (conversationHistory.length / 2) - 1;
+    const MAX_FOLLOWUPS = 3;
+    if (followupCount >= MAX_FOLLOWUPS) {
+      followupInput.disabled = true;
+      followupInput.placeholder = '已达追问上限（3 次）';
+      btnFollowup.disabled = true;
+    } else {
+      followupInput.disabled = false;
+      followupInput.placeholder = `还可追问 ${MAX_FOLLOWUPS - followupCount} 次`;
+    }
 
-    console.log('[main] AI 解读完成，对话历史长度:', conversationHistory.length);
+    console.log('[main] AI 解读完成，对话历史长度:', conversationHistory.length, '追问次数:', followupCount);
 
   } catch (error) {
     console.error('[main] AI 解读失败:', error);

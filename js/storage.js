@@ -5,7 +5,9 @@
 const STORAGE_KEYS = {
   SETTINGS: 'tarot_settings',
   INTUITION: 'tarot_intuition_records',
-  HISTORY: 'tarot_reading_history'
+  HISTORY: 'tarot_reading_history',
+  USAGE_COUNT: 'tarot_usage_count',
+  REDEEMED_CODES: 'tarot_redeemed_codes'
 };
 
 // 默认设置
@@ -112,6 +114,62 @@ export const StorageService = {
       console.error('[storage] 添加历史记录失败:', error);
       return null;
     }
+  },
+
+  // ============================================
+  // 使用次数管理（内置 Key 限次）
+  // ============================================
+
+  // 获取已使用次数
+  getUsageCount() {
+    try {
+      const count = localStorage.getItem(STORAGE_KEYS.USAGE_COUNT);
+      return count ? parseInt(count, 10) : 0;
+    } catch (error) {
+      return 0;
+    }
+  },
+
+  // 使用次数 +1
+  incrementUsageCount() {
+    try {
+      const count = this.getUsageCount() + 1;
+      localStorage.setItem(STORAGE_KEYS.USAGE_COUNT, count.toString());
+      return count;
+    } catch (error) {
+      console.error('[storage] 更新使用次数失败:', error);
+      return 0;
+    }
+  },
+
+  // 获取已兑换的码列表
+  getRedeemedCodes() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.REDEEMED_CODES);
+      return data ? JSON.parse(data) : [];
+    } catch (error) {
+      return [];
+    }
+  },
+
+  // 兑换码：检查是否已用过，成功则记录并增加次数
+  redeemCode(code, addUses) {
+    const redeemed = this.getRedeemedCodes();
+    if (redeemed.includes(code)) {
+      return { success: false, reason: '此兑换码已使用过' };
+    }
+    redeemed.push(code);
+    localStorage.setItem(STORAGE_KEYS.REDEEMED_CODES, JSON.stringify(redeemed));
+    // 增加总可用次数（存为负数偏移使用次数）
+    const currentCount = this.getUsageCount();
+    const newCount = currentCount - addUses; // 减少计数 = 增加可用次数
+    localStorage.setItem(STORAGE_KEYS.USAGE_COUNT, newCount.toString());
+    return { success: true };
+  },
+
+  // 获取剩余可用次数
+  getRemainingUses(maxFree) {
+    return maxFree - this.getUsageCount();
   },
 
   // 清除所有数据
