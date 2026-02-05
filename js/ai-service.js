@@ -2,7 +2,6 @@
 // AI Service - Claude/Gemini API 调用
 // ============================================
 
-import { StorageService } from './storage.js';
 import { CONFIG } from './config.js';
 
 export class AIService {
@@ -90,15 +89,16 @@ export class AIService {
     return CONFIG.getQuestionType(question);
   }
 
-  // AI 意图分类器（Gemini 专用，temperature=0）
-  async classifyQuestionWithAI(apiKey, question) {
+  // AI 意图分类器（通过服务端代理调用 Gemini）
+  async classifyQuestionWithAI(question) {
     const classifierPrompt = CONFIG.CLASSIFIER_PROMPT.replace('{question}', question);
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-    const response = await fetch(url, {
+    const response = await fetch(CONFIG.API.GEMINI_PROXY, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        action: 'classify',
+        question: question,
         contents: [{ parts: [{ text: classifierPrompt }] }],
         generationConfig: {
           temperature: 0,      // 绝对理性，确保只返回 A/B/C
@@ -108,9 +108,16 @@ export class AIService {
     });
 
     if (!response.ok) {
+      // 429 = 次数用完，抛出让 main.js 处理
+      if (response.status === 429) {
+        throw new Error('体验次数已用完');
+      }
       console.warn('[AI 分类器] 调用失败，回退到关键词匹配');
       return this.getQuestionType(question);
     }
+
+    // 分类时已计次，读取剩余次数
+    this.lastRemainingUses = parseInt(response.headers.get('X-Remaining-Uses'));
 
     const data = await response.json();
     const result = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toUpperCase();
@@ -318,15 +325,15 @@ export class AIService {
     }
   }
 
-  // 调用 Gemini API（流式）
-  async callGemini(apiKey, userMessage, systemPrompt, onChunk) {
+  // 调用 Gemini API（流式，通过服务端代理）
+  async callGemini(userMessage, systemPrompt, onChunk) {
     this.abortController = new AbortController();
 
-    const url = `${CONFIG.API.GEMINI}?alt=sse&key=${apiKey}`;
-    const response = await fetch(url, {
+    const response = await fetch(CONFIG.API.GEMINI_PROXY, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        action: 'reading',
         contents: [{ parts: [{ text: systemPrompt + '\n\n' + userMessage }] }],
         generationConfig: {
           maxOutputTokens: 2048,
@@ -340,8 +347,13 @@ export class AIService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API 错误: ${response.status}`);
+      const errorMsg = typeof errorData.error === 'string' ? errorData.error : errorData.error?.message || `API 错误: ${response.status}`;
+      throw new Error(errorMsg);
     }
+
+    // 读取服务端返回的剩余次数
+    this.lastRemainingUses = parseInt(response.headers.get('X-Remaining-Uses'));
+
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -372,34 +384,20 @@ export class AIService {
   }
 
   // 获取解读（主入口）
-  // intuitionRecords: 外部传入的直觉记录，由调用方控制是否包含
-  // overrideKey: 可选，外部传入的 API Key（用于内置 Key 场景）
-  async getReading(question, cards, onChunk, conversationHistory = [], intuitionRecords = [], overrideKey = null) {
-    const settings = StorageService.getSettings();
-
-    // 确定使用的 API Key 和 Provider
-    const apiKey = overrideKey || settings.apiKey;
-    const apiProvider = overrideKey ? CONFIG.DEFAULT_API_PROVIDER : settings.aiProvider;
-
-    if (!apiKey) {
-      throw new Error('请先在设置中配置并验证 API Key');
-    }
-
+  // Gemini 走服务端代理（不需要 apiKey），Claude 暂不处理
+  async getReading(question, cards, onChunk, conversationHistory = [], intuitionRecords = []) {
     // 判断是否为追问（有对话历史）
     const isFollowup = conversationHistory.length > 0;
 
-    // 本地快速校验（仅首次解读时检查，追问不限制）
-    if (!isFollowup && (!question || question.trim().length < 2)) {
-      throw new Error(CONFIG.INVALID_INPUT_MESSAGE);
-    }
+    // 短输入交给服务端 classify 处理（会计次但不调用 Gemini）
 
     // 获取问题类型和对应的 system prompt
     let questionType, systemPrompt;
 
-    if (apiProvider === 'gemini' && !isFollowup) {
-      // Gemini 首次解读：使用 AI 分类器（temperature=0）
-      console.log('[AI] Gemini 意图分类中...');
-      questionType = await this.classifyQuestionWithAI(apiKey, question);
+    if (!isFollowup) {
+      // 首次解读：使用 AI 分类器（通过服务端代理）
+      console.log('[AI] 意图分类中...');
+      questionType = await this.classifyQuestionWithAI(question);
       console.log('[AI] 分类结果:', questionType);
 
       // 无效输入：直接返回引导消息（不作为错误）
@@ -408,7 +406,7 @@ export class AIService {
         return;
       }
     } else {
-      // Claude 或追问：使用关键词匹配
+      // 追问：使用关键词匹配
       questionType = this.getQuestionType(question);
     }
 
@@ -437,22 +435,11 @@ export class AIService {
         ...conversationHistory,
         { role: 'user', content: question }
       ];
-
-      if (apiProvider === 'claude') {
-        await this.callClaudeWithHistory(apiKey, messages, systemPrompt, onChunk);
-      } else {
-        await this.callGeminiWithHistory(apiKey, messages, systemPrompt, onChunk);
-      }
+      await this.callGeminiWithHistory(messages, systemPrompt, onChunk);
     } else {
       // 首次解读：构建完整的牌面信息
       const userMessage = this.buildUserMessage(question, cards, intuitionRecords);
-
-      if (apiProvider === 'claude') {
-        await this.callClaude(apiKey, userMessage, systemPrompt, onChunk);
-      } else {
-        // Gemini 使用 temperature=1.2 进行创意解读
-        await this.callGemini(apiKey, userMessage, systemPrompt, onChunk);
-      }
+      await this.callGemini(userMessage, systemPrompt, onChunk);
     }
   }
 
@@ -513,9 +500,9 @@ export class AIService {
     }
   }
 
-  // 调用 Gemini API（带对话历史）
+  // 调用 Gemini API（带对话历史，通过服务端代理）
   // 注意：追问时不再添加 systemPrompt，因为首次解读时已建立角色上下文
-  async callGeminiWithHistory(apiKey, messages, systemPrompt, onChunk) {
+  async callGeminiWithHistory(messages, systemPrompt, onChunk) {
     this.abortController = new AbortController();
 
     // 转换消息格式为 Gemini 格式
@@ -524,11 +511,11 @@ export class AIService {
       parts: [{ text: msg.content }]
     }));
 
-    const url = `${CONFIG.API.GEMINI}?alt=sse&key=${apiKey}`;
-    const response = await fetch(url, {
+    const response = await fetch(CONFIG.API.GEMINI_PROXY, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        action: 'followup',
         contents: contents,
         generationConfig: {
           maxOutputTokens: 2048,
@@ -542,7 +529,8 @@ export class AIService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API 错误: ${response.status}`);
+      const errorMsg = typeof errorData.error === 'string' ? errorData.error : errorData.error?.message || `API 错误: ${response.status}`;
+      throw new Error(errorMsg);
     }
 
     const reader = response.body.getReader();

@@ -5,16 +5,16 @@
 console.log('[main] 应用启动');
 
 // 导入模块
-import { TarotScene } from './three-scene.js?v=10';
-import { StarRing } from './star-ring.js?v=10';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=10';
-import { GestureController } from './gesture.js?v=10';
-import { CardAnimator } from './card-animations.js?v=10';
-import { DebugControls } from './debug-controls.js?v=10';
-import { StorageService } from './storage.js?v=10';
-import { AIService } from './ai-service.js?v=10';
-import { MouseController, isTouchDevice } from './mouse-controller.js?v=10';
-import { CONFIG } from './config.js?v=10';
+import { TarotScene } from './three-scene.js?v=11';
+import { StarRing } from './star-ring.js?v=11';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=11';
+import { GestureController } from './gesture.js?v=11';
+import { CardAnimator } from './card-animations.js?v=11';
+import { DebugControls } from './debug-controls.js?v=11';
+import { StorageService } from './storage.js?v=11';
+import { AIService } from './ai-service.js?v=11';
+import { MouseController, isTouchDevice } from './mouse-controller.js?v=11';
+import { CONFIG } from './config.js?v=11';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -120,6 +120,21 @@ let intuitionCards = []; // 当前练习的两张牌数据
 
 // AI 服务
 const aiService = new AIService();
+
+// 服务端剩余次数缓存
+let cachedRemaining = CONFIG.MAX_FREE_USES;
+
+// 从服务端获取剩余次数
+async function fetchRemainingUses() {
+  try {
+    const res = await fetch('/api/usage');
+    const data = await res.json();
+    cachedRemaining = data.remaining;
+  } catch (e) {
+    console.error('[main] 获取剩余次数失败:', e);
+  }
+  return cachedRemaining;
+}
 
 // 初始化数据
 async function initData() {
@@ -1156,50 +1171,39 @@ function saveSettings() {
   closeSettings();
 }
 
-// 更新 API 配置提示可见性
-function updateApiHintVisibility() {
-  const isConfigured = StorageService.isAPIConfigured();
-  if (isConfigured) {
-    apiHintPanel.classList.remove('visible');
-    apiHintPanel.innerHTML = '';
+// 更新 API 提示 UI（同步，基于缓存值）
+function updateApiHintUI() {
+  if (cachedRemaining > 0) {
+    apiHintPanel.classList.add('visible');
+    apiHintPanel.innerHTML = `体验模式：剩余 <strong>${cachedRemaining}</strong> 次`;
+    apiHintPanel.style.color = '#C9A962';
   } else {
-    // 使用内置 Key：显示剩余次数
-    const remaining = StorageService.getRemainingUses(CONFIG.MAX_FREE_USES);
-    if (remaining > 0) {
-      apiHintPanel.classList.add('visible');
-      apiHintPanel.innerHTML = `体验模式：剩余 <strong>${remaining}</strong> 次`;
-      apiHintPanel.style.color = '#C9A962';
-    } else {
-      apiHintPanel.classList.add('visible');
-      apiHintPanel.innerHTML = `体验次数已用完，请 <a id="open-settings-link-hint">配置 API</a> 或输入兑换码`;
-      const link = document.getElementById('open-settings-link-hint');
-      if (link) link.addEventListener('click', openSettings);
-    }
+    apiHintPanel.classList.add('visible');
+    apiHintPanel.innerHTML = `体验次数已用完，请 <a id="open-settings-link-hint">输入兑换码</a>`;
+    const link = document.getElementById('open-settings-link-hint');
+    if (link) link.addEventListener('click', openSettings);
   }
 }
 
-// 判断是否使用内置 Key（用户未配置自己的 Key）
-function isUsingBuiltinKey() {
-  return !StorageService.isAPIConfigured();
+// 更新 API 配置提示可见性（异步，从服务端获取最新数据）
+async function updateApiHintVisibility() {
+  await fetchRemainingUses();
+  updateApiHintUI();
 }
 
-// 检查是否可以揭示命运
+// 检查是否可以揭示命运（基于缓存的剩余次数）
 function checkCanReveal() {
-  if (isUsingBuiltinKey()) {
-    // 使用内置 Key：检查剩余次数
-    const remaining = StorageService.getRemainingUses(CONFIG.MAX_FREE_USES);
-    if (remaining <= 0) {
-      showUsageExhausted();
-      return false;
-    }
-    return true;
+  if (cachedRemaining <= 0) {
+    showUsageExhausted();
+    return false;
   }
-  // 用户自己配置了 Key：不限次数
   return true;
 }
 
 // 显示次数用尽提示
 function showUsageExhausted() {
+  // 防止重复叠加
+  if (document.querySelector('.usage-exhausted-overlay')) return;
   // 创建弹窗提示
   const overlay = document.createElement('div');
   overlay.className = 'usage-exhausted-overlay';
@@ -1265,41 +1269,46 @@ apiKeyInput.addEventListener('input', () => {
 // 验证按钮
 verifyBtn.addEventListener('click', verifyApiKey);
 
-// 兑换码功能
-function handleRedeemCode() {
+// 兑换码功能（调用服务端 /api/redeem）
+async function handleRedeemCode() {
   const redeemInput = document.getElementById('redeem-code-input');
   const redeemStatus = document.getElementById('redeem-status');
   if (!redeemInput || !redeemStatus) return;
 
-  const code = redeemInput.value.trim().toUpperCase();
+  const code = redeemInput.value.trim();
   if (!code) {
     redeemStatus.textContent = '请输入兑换码';
     redeemStatus.className = 'redeem-status error';
     return;
   }
 
-  // 检查兑换码是否有效
-  const addUses = CONFIG.REDEEM_CODES[code];
-  if (!addUses) {
-    redeemStatus.textContent = '兑换码无效';
-    redeemStatus.className = 'redeem-status error';
-    return;
-  }
+  redeemStatus.textContent = '验证中...';
+  redeemStatus.className = 'redeem-status info';
 
-  // 兑换
-  const result = StorageService.redeemCode(code, addUses);
-  if (result.success) {
-    const remaining = StorageService.getRemainingUses(CONFIG.MAX_FREE_USES);
-    redeemStatus.textContent = `兑换成功！增加 ${addUses} 次，剩余 ${remaining} 次`;
-    redeemStatus.className = 'redeem-status success';
-    redeemInput.value = '';
-    updateApiHintVisibility();
-    // 3秒后自动消失
-    setTimeout(() => { redeemStatus.textContent = ''; redeemStatus.className = 'redeem-status'; }, 3000);
-  } else {
-    redeemStatus.textContent = result.reason;
+  try {
+    const res = await fetch('/api/redeem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      cachedRemaining = data.remaining;
+      redeemStatus.textContent = `兑换成功！增加 ${data.addUses} 次，剩余 ${data.remaining} 次`;
+      redeemStatus.className = 'redeem-status success';
+      redeemInput.value = '';
+      updateApiHintUI();
+      setTimeout(() => { redeemStatus.textContent = ''; redeemStatus.className = 'redeem-status'; }, 3000);
+    } else {
+      redeemStatus.textContent = data.reason || '兑换失败';
+      redeemStatus.className = 'redeem-status error';
+      setTimeout(() => { redeemStatus.textContent = ''; redeemStatus.className = 'redeem-status'; }, 3000);
+    }
+  } catch (e) {
+    console.error('[main] 兑换码请求失败:', e);
+    redeemStatus.textContent = '网络错误，请重试';
     redeemStatus.className = 'redeem-status error';
-    // 3秒后自动消失
     setTimeout(() => { redeemStatus.textContent = ''; redeemStatus.className = 'redeem-status'; }, 3000);
   }
 }
@@ -1453,23 +1462,24 @@ async function callAIReading(followupQuestion = null) {
     // 收集完整响应
     let fullResponse = '';
 
-    // 确定是否使用内置 Key
-    const useBuiltin = isUsingBuiltinKey();
-    const overrideKey = useBuiltin ? CONFIG.DEFAULT_API_KEY : null;
-
     // 调用 AI（追问时传递对话历史，首次解读传递直觉记录）
     await aiService.getReading(question, cards, (chunk) => {
       fullResponse += chunk;
-    }, isFollowup ? conversationHistory : [], intuitionRecords, overrideKey);
+    }, isFollowup ? conversationHistory : [], intuitionRecords);
 
-    // 检测是否为无效输入
+    // 检测是否为无效输入引导消息
     const isInvalidInput = fullResponse.includes('抱歉，星际塔罗师没有听懂');
 
-    // 使用内置 Key 时，首次解读计数（追问不计数，无效输入也计数防滥用）
-    if (useBuiltin && !isFollowup) {
-      StorageService.incrementUsageCount();
-      updateApiHintVisibility();
-      console.log('[main] 内置 Key 使用次数:', StorageService.getUsageCount());
+    // 服务端在 classify 时已计次，更新前端缓存
+    if (!isFollowup) {
+      const serverRemaining = aiService.lastRemainingUses;
+      if (!isNaN(serverRemaining)) {
+        cachedRemaining = serverRemaining;
+      } else {
+        cachedRemaining -= 1;
+      }
+      updateApiHintUI();
+      console.log('[main] 服务端计次，剩余:', cachedRemaining);
     }
 
     // 更新对话历史
@@ -1547,11 +1557,18 @@ async function callAIReading(followupQuestion = null) {
   } catch (error) {
     console.error('[main] AI 解读失败:', error);
 
-    // 无效输入被 throw 到 catch：首次解读 + 内置 Key → 也扣次数
-    if (!isFollowup && isUsingBuiltinKey() && error.message === CONFIG.INVALID_INPUT_MESSAGE) {
-      StorageService.incrementUsageCount();
-      updateApiHintVisibility();
-      console.log('[main] catch 中扣次数，当前:', StorageService.getUsageCount());
+    // 429 = 服务端返回次数用完
+    if (error.message === '体验次数已用完') {
+      cachedRemaining = 0;
+      updateApiHintUI();
+      if (isFollowup) {
+        loadingEl?.remove();
+      } else {
+        resultLoading.classList.remove('visible');
+      }
+      showUsageExhausted();
+      followupInput.disabled = false;
+      return;
     }
 
     if (isFollowup) {
@@ -1562,15 +1579,14 @@ async function callAIReading(followupQuestion = null) {
       errorEl.style.color = '#e74c3c';
       errorEl.textContent = error.message || '回答失败，请重试';
       resultContent.appendChild(errorEl);
+      followupInput.disabled = false;
     } else {
       // 首次解读错误
       resultLoading.classList.remove('visible');
       errorMessage.textContent = error.message || '解读失败，请重试';
       resultError.classList.add('visible');
+      followupInput.disabled = false;
     }
-
-    // 启用追问输入（允许重试后继续）
-    followupInput.disabled = false;
   }
 }
 

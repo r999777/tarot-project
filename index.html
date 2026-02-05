@@ -2709,6 +2709,13 @@
 
   <!-- Markdown 渲染库 -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    // 安全配置：过滤 AI 返回内容中的原始 HTML，防止 XSS
+    marked.setOptions({ breaks: true });
+    const renderer = new marked.Renderer();
+    renderer.html = (html) => '';  // 丢弃所有原始 HTML 标签
+    marked.use({ renderer });
+  </script>
 
   <script type="importmap">
   {
@@ -2718,6 +2725,6 @@
   }
   </script>
 
-  <script type="module" src="js/main.js?v=10"></script>
+  <script type="module" src="js/main.js?v=11"></script>
 </body>
 </html>

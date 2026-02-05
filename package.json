@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@upstash/redis": "^1.36.2"
+  }
+}

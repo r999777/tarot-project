@@ -42,26 +42,11 @@ export const CONFIG = {
   // API 配置
   API: {
     CLAUDE: 'https://api.anthropic.com/v1/messages',
-    GEMINI: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent',
+    GEMINI_PROXY: '/api/gemini',
   },
 
-  // 内置 API Key（免配置体验）
-  DEFAULT_API_KEY: 'AIzaSyBLVJC2UYXJjbZr5WgwFbnT6L_woyYv34s',
-  DEFAULT_API_PROVIDER: 'gemini',
-
-  // 免费使用次数
+  // 免费使用次数（与服务端 MAX_FREE_USES 保持一致，仅用于前端初始显示）
   MAX_FREE_USES: 3,
-
-  // 兑换码列表（码 → 增加次数）
-  REDEEM_CODES: {
-    'STAR-7721': 3,
-    'STAR-4458': 3,
-    'STAR-9136': 3,
-    'STAR-3067': 3,
-    'STAR-8294': 3,
-    'STAR-5510': 3,
-    'STAR-6843': 3,
-  },
 
   // ============================================================
   // 问题类型关键词配置

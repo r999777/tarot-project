@@ -704,3 +704,55 @@ RING_ROTATION_FAST: 10000ms (加速时)
 - 多人同时使用：API 独立调用，互不影响
 - 直觉数据隔离：localStorage 本地存储，互不可见
 - App 开发：后续考虑
+
+### 2026-02-05 (v0.7: 后端 API 代理 + 服务端计次)
+
+#### 架构改造
+- **API Key 从前端移到后端**
+  - 新增 Vercel Serverless Functions（Edge Runtime）
+  - API Key 存储在 Vercel 环境变量，前端代码不再包含任何密钥
+  - 旧 Key 已被 Google 标记为泄露，已更换新 Key
+
+- **新增后端文件**
+  - `package.json` — 声明 `@upstash/redis` 依赖
+  - `api/gemini.js` — Gemini API 代理，支持 3 种 action：
+    - `classify`：非流式，意图分类 + 计次（每次请求 +1，包括无效输入）
+    - `reading`：流式 SSE，塔罗解读（不再计次，已在 classify 时计过）
+    - `followup`：流式 SSE，追问（不计次）
+  - `api/redeem.js` — 服务端兑换码验证（7 个码从前端迁移到此）
+  - `api/usage.js` — GET 查询剩余次数
+
+- **Upstash Redis 存储**
+  - Vercel KV (Upstash Redis) 按 IP 存储使用数据
+  - 数据结构：`usage:{ip}` → `{ count: N, redeemed: ["STAR-XXXX"] }`
+  - 清除 localStorage 无法绕过限制
+
+#### 前端改动
+- `js/config.js`
+  - 删除 `DEFAULT_API_KEY`、`REDEEM_CODES`
+  - API URL 改为 `GEMINI_PROXY: '/api/gemini'`
+- `js/ai-service.js`
+  - 所有 Gemini 调用改走 `/api/gemini` 代理
+  - classify 请求带 `question` 字段（供后端短输入判断）
+  - classify 响应读取 `X-Remaining-Uses` 头
+  - 去掉前端 `question.length < 2` 本地校验（交给后端处理）
+- `js/main.js`
+  - 新增 `cachedRemaining` + `fetchRemainingUses()` 服务端缓存
+  - `updateApiHintUI()` 同步更新 / `updateApiHintVisibility()` 异步获取
+  - 兑换码改调 `/api/redeem`
+  - 429 错误处理（次数用完弹窗）
+  - 去掉客户端 `incrementUsageCount()` 调用
+- `js/storage.js`
+  - 删除 `getUsageCount`、`incrementUsageCount`、`redeemCode`、`getRemainingUses`
+- `index.html` — 缓存版本 `?v=10` → `?v=11`
+
+#### 计次逻辑
+- 计次时机：classify 阶段（意图分类时即扣次数）
+- 短输入（< 2 字符）：后端直接返回 D（无效），不调用 Gemini（零 API 成本），但仍计次
+- 无效输入（Gemini 分类为 D）：已计次，前端显示引导消息 + 重新输入按钮
+- 有效输入：classify 计次 → reading 流式解读（不再重复计次）
+- 追问：不计次
+
+#### Bug 修复
+- 修复 `isInvalidInput` 变量未定义导致 ReferenceError
+- 清理 catch 块中不再需要的 `INVALID_INPUT_MESSAGE` 分支
