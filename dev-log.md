@@ -692,10 +692,13 @@ RING_ROTATION_FAST: 10000ms (加速时)
   - iPad 卡槽 y 坐标：-2.50 → -2.15，位置上移更贴合横屏视觉
 
 #### Bug 修复
-- **无效输入不再消耗使用次数**
-  - 将次数计数移到无效输入判断之后，仅有效解读才扣次数
+- **修复无效输入不扣使用次数**
+  - 原因：`ai-service.js` 中短输入（< 2 字符）通过 `throw new Error()` 抛出，直接进入 `catch` 块，跳过了 `try` 中的 `incrementUsageCount()`
+  - 修复：在 `callAIReading()` 的 `catch` 块中补充判断，若为首次解读 + 内置 Key + 错误信息为无效输入提示，则同样扣次数
 - **手机端取消抓牌提示位置调整**
   - 手机端 `.grab-cancel-hint` bottom: 340px → 300px，位于手势引导上方
+- **全模块缓存刷新**
+  - 所有 JS import 统一加 `?v=10`，`index.html` script 标签同步更新，防止浏览器缓存旧代码
 
 #### 已确认无需处理
 - 多人同时使用：API 独立调用，互不影响
