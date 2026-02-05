@@ -9,7 +9,7 @@ import { TarotScene } from './three-scene.js';
 import { StarRing } from './star-ring.js';
 import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js';
 import { GestureController } from './gesture.js';
-import { CardAnimator } from './card-animations.js?v=8';
+import { CardAnimator } from './card-animations.js?v=9';
 import { DebugControls } from './debug-controls.js';
 import { StorageService } from './storage.js';
 import { AIService } from './ai-service.js';
