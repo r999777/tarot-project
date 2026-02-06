@@ -756,3 +756,49 @@ RING_ROTATION_FAST: 10000ms (加速时)
 #### Bug 修复
 - 修复 `isInvalidInput` 变量未定义导致 ReferenceError
 - 清理 catch 块中不再需要的 `INVALID_INPUT_MESSAGE` 分支
+
+### 2026-02-06 (v0.7.1: 安全加固 + Bug 修复)
+
+#### P1 — API 绕过漏洞修复
+- **问题**：`/api/gemini` 的 `reading` / `followup` 不做任何鉴权，直接调用即可绕过次数限制
+- **修复**：引入 token 认证机制
+  - `classify` 成功后生成 UUID token，写入 Redis（状态 `new`，30 分钟过期），通过 `X-Reading-Token` 响应头返回前端
+  - `reading` 必须携带 token，用 `redis.getdel()` 原子读取并删除，确保只有一个请求能获得 `new`，通过后写入 `used`
+  - `followup` 必须携带 token，验证状态为 `used`
+  - 前端 `classifyQuestionWithAI()` 读取 token → `callGemini()` / `callGeminiWithHistory()` 携带 token
+- **文件**：`api/gemini.js`、`js/ai-service.js`
+
+#### P1 — Token 竞态条件修复
+- **问题**：`reading` 分支先 `get` 再 `set`，并发两次请求可能都读到 `new`
+- **修复**：用 `redis.getdel()` 替代 `redis.get()` 实现原子消费
+- **文件**：`api/gemini.js`
+
+#### P2 — 剩余次数显示漂移
+- **问题**：`callGemini()` 读取 `X-Remaining-Uses` 头，但 `reading` 不返回该头，导致 `lastRemainingUses` 被 NaN 覆盖
+- **修复**：删除 `callGemini()` 中的 `X-Remaining-Uses` 读取（只在 `classifyQuestionWithAI()` 中读取一次）
+- **文件**：`js/ai-service.js`
+
+#### P2 — 无效输入后追问区永久隐藏
+- **问题**：无效输入时 `.result-footer` 被设为 `display: none`，但用户点"返回"/"首页"/"重试"时不恢复
+- **修复**：在 `hideResultPage()`、`resultToHome()`、重试按钮三个退出路径中恢复 `.result-footer` 显示
+- **文件**：`js/main.js`
+
+#### P2 — classify 失败后回退关键词逻辑已不可用
+- **问题**：`classifyQuestionWithAI()` 在 `!response.ok` 时回退关键词匹配，但此时无 token，后续 `reading` 必定 403
+- **修复**：删除回退逻辑，classify 失败直接抛出 `'服务暂时不可用，请稍后重试'`
+- **文件**：`js/ai-service.js`
+
+#### P2 — reading 失败后前端剩余次数不更新
+- **问题**：classify 成功已计次，但 reading 失败时 `cachedRemaining` 不同步，前端显示偏大
+- **修复**：catch 块顶部添加 `cachedRemaining` 同步逻辑（从 `aiService.lastRemainingUses` 读取）
+- **文件**：`js/main.js`
+
+#### P3 — 无效输入仍发放 token
+- **问题**：短输入（< 2 字符）直接返回 D，但同时创建并返回 `new` token，可被用于调用 `reading`
+- **修复**：将 token 生成移到短输入检查之后，短输入响应不包含 `X-Reading-Token` 头
+- **文件**：`api/gemini.js`
+
+#### P2 — classify 失败时旧 token 被复用
+- **问题**：classify 失败时 `lastReadingToken` 保留上次的值，可能复用已过期/已消费的 token
+- **修复**：`classifyQuestionWithAI()` 入口处清空 `this.lastReadingToken = null`
+- **文件**：`js/ai-service.js`

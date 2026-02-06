@@ -91,6 +91,9 @@ export class AIService {
 
   // AI 意图分类器（通过服务端代理调用 Gemini）
   async classifyQuestionWithAI(question) {
+    // 清空旧 token，防止 classify 失败时复用
+    this.lastReadingToken = null;
+
     const classifierPrompt = CONFIG.CLASSIFIER_PROMPT.replace('{question}', question);
 
     const response = await fetch(CONFIG.API.GEMINI_PROXY, {
@@ -108,16 +111,15 @@ export class AIService {
     });
 
     if (!response.ok) {
-      // 429 = 次数用完，抛出让 main.js 处理
       if (response.status === 429) {
         throw new Error('体验次数已用完');
       }
-      console.warn('[AI 分类器] 调用失败，回退到关键词匹配');
-      return this.getQuestionType(question);
+      throw new Error('服务暂时不可用，请稍后重试');
     }
 
-    // 分类时已计次，读取剩余次数
+    // 分类时已计次，读取剩余次数和 reading token
     this.lastRemainingUses = parseInt(response.headers.get('X-Remaining-Uses'));
+    this.lastReadingToken = response.headers.get('X-Reading-Token');
 
     const data = await response.json();
     const result = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toUpperCase();
@@ -334,6 +336,7 @@ export class AIService {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'reading',
+        readingToken: this.lastReadingToken,
         contents: [{ parts: [{ text: systemPrompt + '\n\n' + userMessage }] }],
         generationConfig: {
           maxOutputTokens: 2048,
@@ -350,10 +353,6 @@ export class AIService {
       const errorMsg = typeof errorData.error === 'string' ? errorData.error : errorData.error?.message || `API 错误: ${response.status}`;
       throw new Error(errorMsg);
     }
-
-    // 读取服务端返回的剩余次数
-    this.lastRemainingUses = parseInt(response.headers.get('X-Remaining-Uses'));
-
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -516,6 +515,7 @@ export class AIService {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'followup',
+        readingToken: this.lastReadingToken,
         contents: contents,
         generationConfig: {
           maxOutputTokens: 2048,

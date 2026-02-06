@@ -1557,6 +1557,15 @@ async function callAIReading(followupQuestion = null) {
   } catch (error) {
     console.error('[main] AI 解读失败:', error);
 
+    // classify 成功后服务端已计次，即使 reading 失败也要同步剩余次数
+    if (!isFollowup) {
+      const serverRemaining = aiService.lastRemainingUses;
+      if (!isNaN(serverRemaining)) {
+        cachedRemaining = serverRemaining;
+      }
+      updateApiHintUI();
+    }
+
     // 429 = 服务端返回次数用完
     if (error.message === '体验次数已用完') {
       cachedRemaining = 0;
@@ -1594,12 +1603,14 @@ async function callAIReading(followupQuestion = null) {
 function hideResultPage() {
   resultPage.style.display = 'none';
   readingPage.style.display = 'block';
+  document.querySelector('.result-footer').style.display = '';
 }
 
 // 从结果页面返回首页
 function resultToHome() {
   resultPage.style.display = 'none';
   mainMenu.classList.remove('hidden');
+  document.querySelector('.result-footer').style.display = '';
 
   // 重置状态
   userQuestion = '';
@@ -1614,6 +1625,7 @@ btnResultHome.addEventListener('click', resultToHome);
 btnRetry.addEventListener('click', () => {
   resultPage.style.display = 'none';
   questionPage.style.display = 'flex';
+  document.querySelector('.result-footer').style.display = '';
   questionInput.value = '';
   questionInput.focus();
 });

@@ -49,7 +49,7 @@ export default async function handler(req) {
     });
   }
 
-  const { action, question, contents, generationConfig } = await req.json();
+  const { action, question, contents, generationConfig, readingToken } = await req.json();
   const ip = getClientIP(req);
 
   // --- action: classify (non-streaming, check + count) ---
@@ -70,6 +70,7 @@ export default async function handler(req) {
     const newRemaining = MAX_FREE_USES - usage.count;
 
     // 短输入直接返回 D（无效），不调用 Gemini（零成本）
+    // 不发放 token，防止被用于直接调用 reading
     if (!question || question.trim().length < 2) {
       return new Response(JSON.stringify({
         candidates: [{ content: { parts: [{ text: 'D' }], role: 'model' } }],
@@ -81,6 +82,11 @@ export default async function handler(req) {
         },
       });
     }
+
+    // 生成 token（状态机：new → used）
+    // reading 只接受 new 并转为 used（一次性），followup 只接受 used
+    const token = crypto.randomUUID();
+    await redis.set(`rtoken:${token}`, 'new', { ex: 1800 }); // 30 分钟过期
 
     const url = `${GEMINI_BASE}:generateContent?key=${GEMINI_API_KEY}`;
     const geminiRes = await fetch(url, {
@@ -95,12 +101,31 @@ export default async function handler(req) {
       headers: {
         'Content-Type': 'application/json',
         'X-Remaining-Uses': String(newRemaining),
+        'X-Reading-Token': token,
       },
     });
   }
 
   // --- action: reading (streaming, no counting — already counted at classify) ---
   if (action === 'reading') {
+    // 验证 token 状态必须是 new（一次性消费）
+    if (!readingToken) {
+      return new Response(JSON.stringify({ error: 'Missing token' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    // 原子操作：getdel 取出并删除，只有一个并发请求能拿到 'new'
+    const tokenStatus = await redis.getdel(`rtoken:${readingToken}`);
+    if (tokenStatus !== 'new') {
+      return new Response(JSON.stringify({ error: 'Invalid or used token' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    // 竞态安全：只有赢家到达这里，写入 'used' 供 followup 使用
+    await redis.set(`rtoken:${readingToken}`, 'used', { ex: 1800 });
+
     const url = `${GEMINI_BASE}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
     const geminiRes = await fetch(url, {
       method: 'POST',
@@ -126,6 +151,21 @@ export default async function handler(req) {
 
   // --- action: followup (streaming, no counting) ---
   if (action === 'followup') {
+    // 验证 token 状态必须是 used（已完成 reading）
+    if (!readingToken) {
+      return new Response(JSON.stringify({ error: 'Missing token' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    const tokenStatus = await redis.get(`rtoken:${readingToken}`);
+    if (tokenStatus !== 'used') {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     const url = `${GEMINI_BASE}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
     const geminiRes = await fetch(url, {
       method: 'POST',
