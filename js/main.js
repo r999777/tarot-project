@@ -5,16 +5,16 @@
 console.log('[main] 应用启动');
 
 // 导入模块
-import { TarotScene } from './three-scene.js?v=15';
-import { StarRing } from './star-ring.js?v=15';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=15';
-import { GestureController } from './gesture.js?v=15';
-import { CardAnimator } from './card-animations.js?v=15';
-import { DebugControls } from './debug-controls.js?v=15';
-import { StorageService } from './storage.js?v=15';
-import { AIService } from './ai-service.js?v=15';
-import { MouseController, isTouchDevice } from './mouse-controller.js?v=15';
-import { CONFIG } from './config.js?v=15';
+import { TarotScene } from './three-scene.js?v=17';
+import { StarRing } from './star-ring.js?v=17';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=17';
+import { GestureController } from './gesture.js?v=17';
+import { CardAnimator } from './card-animations.js?v=17';
+import { DebugControls } from './debug-controls.js?v=17';
+import { StorageService } from './storage.js?v=17';
+import { AIService } from './ai-service.js?v=17';
+import { MouseController, isTouchDevice } from './mouse-controller.js?v=17';
+import { CONFIG } from './config.js?v=17';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;

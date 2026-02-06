@@ -391,13 +391,21 @@ export class AIService {
 
     // 短输入交给服务端 classify 处理（会计次但不调用 Gemini）
 
-    // 获取问题类型和对应的 system prompt
-    let questionType, systemPrompt;
+    let systemPrompt;
 
-    if (!isFollowup) {
+    if (isFollowup) {
+      // 追问：使用专用 prompt（不复用首次解读的格式模板）
+      systemPrompt = CONFIG.SYSTEM_PROMPT_FOLLOWUP;
+
+      const messages = [
+        ...conversationHistory,
+        { role: 'user', content: question }
+      ];
+      await this.callGeminiWithHistory(messages, systemPrompt, onChunk);
+    } else {
       // 首次解读：使用 AI 分类器（通过服务端代理）
       console.log('[AI] 意图分类中...');
-      questionType = await this.classifyQuestionWithAI(question);
+      const questionType = await this.classifyQuestionWithAI(question);
       console.log('[AI] 分类结果:', questionType);
 
       // 无效输入：直接返回引导消息（不作为错误）
@@ -405,41 +413,26 @@ export class AIService {
         onChunk(CONFIG.INVALID_INPUT_MESSAGE);
         return;
       }
-    } else {
-      // 追问：使用关键词匹配
-      questionType = this.getQuestionType(question);
-    }
 
-    // 根据问题类型获取 system prompt
-    switch (questionType) {
-      case 'direct':
-        systemPrompt = CONFIG.SYSTEM_PROMPT_DIRECT;
-        break;
-      case 'fortune':
-        systemPrompt = CONFIG.SYSTEM_PROMPT_FORTUNE;
-        break;
-      case 'analysis':
-      default:
-        systemPrompt = CONFIG.SYSTEM_PROMPT_ANALYSIS;
-        break;
-    }
+      // 根据问题类型获取 system prompt
+      switch (questionType) {
+        case 'direct':
+          systemPrompt = CONFIG.SYSTEM_PROMPT_DIRECT;
+          break;
+        case 'fortune':
+          systemPrompt = CONFIG.SYSTEM_PROMPT_FORTUNE;
+          break;
+        case 'analysis':
+        default:
+          systemPrompt = CONFIG.SYSTEM_PROMPT_ANALYSIS;
+          break;
+      }
 
-    // 获取当前日期并替换占位符（格式：2026年2月3日）
-    const now = new Date();
-    const currentDateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
-    systemPrompt = systemPrompt.replace('{current_date}', currentDateStr);
+      // 获取当前日期并替换占位符（格式：2026年2月3日）
+      const now = new Date();
+      const currentDateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
+      systemPrompt = systemPrompt.replace('{current_date}', currentDateStr);
 
-    if (isFollowup) {
-      // 追问：给 system prompt 追加追问模式说明
-      systemPrompt += `\n\n---\n【追问模式】\n你正在一次塔罗解读的追问环节。用户已完成首次三张牌的解读（对话历史中包含完整的牌面信息和你的解读），现在提出了追加问题。\n请注意：\n- 优先基于已有的牌面来回答追问。如果你认为需要补充抽取新牌来回答，可以这样做，但必须给出完整的深度解读，而不是仅仅列出牌名和属性\n- 直接给出解读内容，不要输出结构化的牌面信息列表（如"牌名：xxx / 类型：xxx / 关键词：xxx"这种格式）\n- 不要输出"牌面统计"、"直觉感悟"、"请根据以上信息进行解读"等模板标记\n- 回答要具体、有针对性，结合用户追问的实际问题\n- 用自然对话的方式回答，保持塔罗师的深度解读风格`;
-
-      // 追问：使用对话历史 + 新问题
-      const messages = [
-        ...conversationHistory,
-        { role: 'user', content: question }
-      ];
-      await this.callGeminiWithHistory(messages, systemPrompt, onChunk);
-    } else {
       // 首次解读：构建完整的牌面信息
       const userMessage = this.buildUserMessage(question, cards, intuitionRecords);
       await this.callGemini(userMessage, systemPrompt, onChunk);
