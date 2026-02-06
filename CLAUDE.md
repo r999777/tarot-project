@@ -54,6 +54,7 @@ tarot-project/
 - 中文注释，日志格式 `console.log('[module] message')`
 - DOM 元素在 main.js 顶部集中声明
 - 调试模式：`const DEBUG_MODE = false`
+- **缓存刷新**：无构建工具，靠 `?v=N` 查询参数破缓存。每次修改 `js/` 下的文件后，必须同步将 `index.html` 的 `<script>` 标签和 `main.js` 中所有 import 的 `?v=N` 版本号 +1
 
 ### 状态管理
 - `AppState` 单例（state.js），六阶段：IDLE → QUESTION → SELECTING → READING → RESULT / INTUITION
