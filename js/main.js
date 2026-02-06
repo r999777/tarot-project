@@ -584,8 +584,10 @@ function showMouseModeHint() {
     gap: 120px;
     z-index: 100;
     opacity: 0;
-    animation: fadeInUp 0.5s ease forwards;
+    transition: opacity 0.5s ease;
   `;
+  // 用 transition 代替 animation，避免同名 fadeInUp keyframes 覆盖 translateX(-50%) 导致位置跳动
+  requestAnimationFrame(() => { container.style.opacity = '1'; });
 
   const boxStyle = `
     background: rgba(255, 255, 255, 0.9);
