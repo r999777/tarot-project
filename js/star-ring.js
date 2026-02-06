@@ -3,7 +3,7 @@
 // ============================================
 
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-import { CONFIG } from './config.js';
+import { CONFIG } from './config.js?v=23';
 
 export class StarRing {
   constructor(cards) {
