@@ -18,6 +18,12 @@ const REDEEM_CODES = {
   'STAR-8294': 3,
   'STAR-5510': 3,
   'STAR-6843': 3,
+  'STAR-2479': 3,
+  'STAR-6815': 3,
+  'STAR-1093': 3,
+  'STAR-7346': 3,
+  'STAR-4027': 3,
+  'STAR-DEV-9999': 99,
 };
 
 function getClientIP(req) {
