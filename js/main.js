@@ -5,16 +5,16 @@
 console.log('[main] 应用启动');
 
 // 导入模块
-import { TarotScene } from './three-scene.js?v=12';
-import { StarRing } from './star-ring.js?v=12';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=12';
-import { GestureController } from './gesture.js?v=12';
-import { CardAnimator } from './card-animations.js?v=12';
-import { DebugControls } from './debug-controls.js?v=12';
-import { StorageService } from './storage.js?v=12';
-import { AIService } from './ai-service.js?v=12';
-import { MouseController, isTouchDevice } from './mouse-controller.js?v=12';
-import { CONFIG } from './config.js?v=12';
+import { TarotScene } from './three-scene.js?v=15';
+import { StarRing } from './star-ring.js?v=15';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=15';
+import { GestureController } from './gesture.js?v=15';
+import { CardAnimator } from './card-animations.js?v=15';
+import { DebugControls } from './debug-controls.js?v=15';
+import { StorageService } from './storage.js?v=15';
+import { AIService } from './ai-service.js?v=15';
+import { MouseController, isTouchDevice } from './mouse-controller.js?v=15';
+import { CONFIG } from './config.js?v=15';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -258,8 +258,12 @@ async function initGesture() {
           starRing.removeCard(closestCard);
           console.log('[main] 从星环移除牌:', pendingCard.cardData.nameCN);
         }
-        // 然后开始粒子汇聚
-        cardAnimator.startParticleConverge();
+        // 预加载牌面纹理（握拳期间提前加载，grabCard 时直接使用）
+        const imageUrl = CONFIG.CARD_IMAGE_BASE_URL + pendingCard.cardData.imageFilename;
+        pendingCard.texturePromise = cardAnimator.preloadTexture(imageUrl);
+
+        // 开始粒子汇聚（1200ms，匹配握拳等待时间，grabCard 在 ~1秒后调用时汇聚仍在 ~83%）
+        cardAnimator.startParticleConverge(1200);
         updateStepIndicator(3, 'active');
       }
     },
@@ -350,53 +354,58 @@ async function grabCard() {
 
   isGrabbing = true;
 
-  // 隐藏手势引导（用户已成功抓取）
-  gestureGuide.classList.remove('visible');
+  try {
+    // 隐藏手势引导（用户已成功抓取）
+    gestureGuide.classList.remove('visible');
 
-  const cardData = pendingCard.cardData;
-  const isReversed = pendingCard.isReversed;
-  pendingCard = null; // 清空待抓取的牌
+    const cardData = pendingCard.cardData;
+    const isReversed = pendingCard.isReversed;
+    const texturePromise = pendingCard.texturePromise || null;
+    pendingCard = null; // 清空待抓取的牌
 
-  // 更新步骤指示器
-  updateStepIndicator(3, 'active');
+    // 更新步骤指示器
+    updateStepIndicator(3, 'active');
 
-  console.log('[main] 抓取牌:', cardData.nameCN, isReversed ? '(逆位)' : '(正位)');
+    console.log('[main] 抓取牌:', cardData.nameCN, isReversed ? '(逆位)' : '(正位)');
 
-  // 计算卡槽索引
-  const slotIndex = selectedCards.length + 1;
+    // 计算卡槽索引
+    const slotIndex = selectedCards.length + 1;
 
-  // 播放抓牌动画序列
-  await cardAnimator.playGrabAnimation(cardData, isReversed, slotIndex, () => {
-    // 动画完成后更新 3D 卡槽，显示实际塔罗牌
-    cardAnimator.updateSlot(slotIndex, cardData, isReversed);
-  });
+    // 播放抓牌动画序列（粒子汇聚已在 onFistStart 启动，纹理也已预加载）
+    await cardAnimator.playGrabAnimation(cardData, isReversed, slotIndex, () => {
+      // 动画完成后更新 3D 卡槽，显示实际塔罗牌
+      cardAnimator.updateSlot(slotIndex, cardData, isReversed);
+    }, texturePromise);
 
-  // 添加到已选列表
-  selectedCards.push({
-    card: cardData,
-    isReversed: isReversed
-  });
+    // 添加到已选列表
+    selectedCards.push({
+      card: cardData,
+      isReversed: isReversed
+    });
 
-  // 检查是否选满
-  if (selectedCards.length < MAX_CARDS) {
-    updateStepIndicator(1, 'active');
-    starRing.setSpeed('normal');
-    // 重置抓取资格，需要重新张开手掌
-    isPalmActivated = false;
-    // 重新显示手势引导，重置到第一步
-    guideStep1.classList.add('active');
-    guideStep2.classList.remove('active');
-    gestureGuide.classList.add('visible');
-  } else {
-    // 选满3张，激活揭示按钮并关闭摄像头
-    activateRevealButton();
-    if (gestureController) {
-      gestureController.stop();
-      console.log('[main] 抽牌完成，已关闭摄像头');
+    // 检查是否选满
+    if (selectedCards.length < MAX_CARDS) {
+      updateStepIndicator(1, 'active');
+      starRing.setSpeed('normal');
+      // 重置抓取资格，需要重新张开手掌
+      isPalmActivated = false;
+      // 重新显示手势引导，重置到第一步
+      guideStep1.classList.add('active');
+      guideStep2.classList.remove('active');
+      gestureGuide.classList.add('visible');
+    } else {
+      // 选满3张，激活揭示按钮并关闭摄像头
+      activateRevealButton();
+      if (gestureController) {
+        gestureController.stop();
+        console.log('[main] 抽牌完成，已关闭摄像头');
+      }
     }
+  } catch (error) {
+    console.error('[main] 手势抓牌动画出错:', error);
+  } finally {
+    isGrabbing = false;
   }
-
-  isGrabbing = false;
 }
 
 // 更新步骤指示器
@@ -495,45 +504,46 @@ async function onMouseCardSelect(cardMesh) {
 
   isGrabbing = true;
 
-  const cardData = cardMesh.userData.cardData;
-  const isReversed = cardMesh.userData.isReversed;
+  try {
+    const cardData = cardMesh.userData.cardData;
+    const isReversed = cardMesh.userData.isReversed;
 
-  // 从星环移除这张牌
-  starRing.removeCard(cardMesh);
+    // 从星环移除这张牌
+    starRing.removeCard(cardMesh);
 
-  console.log('[main] 鼠标选牌:', cardData.nameCN, isReversed ? '(逆位)' : '(正位)');
+    console.log('[main] 鼠标选牌:', cardData.nameCN, isReversed ? '(逆位)' : '(正位)');
 
-  // 计算卡槽索引
-  const slotIndex = selectedCards.length + 1;
+    // 计算卡槽索引
+    const slotIndex = selectedCards.length + 1;
 
-  // 开始粒子汇聚动画
-  cardAnimator.startParticleConverge();
+    // 开始粒子汇聚动画
+    cardAnimator.startParticleConverge();
 
-  // 短暂延迟后播放抓牌动画
-  await new Promise(resolve => setTimeout(resolve, 300));
+    // 播放抓牌动画序列（内部会等到汇聚 80% 时开始显示卡牌，无缝过渡）
+    await cardAnimator.playGrabAnimation(cardData, isReversed, slotIndex, () => {
+      cardAnimator.updateSlot(slotIndex, cardData, isReversed);
+    });
 
-  // 播放抓牌动画序列
-  await cardAnimator.playGrabAnimation(cardData, isReversed, slotIndex, () => {
-    cardAnimator.updateSlot(slotIndex, cardData, isReversed);
-  });
+    // 添加到已选列表
+    selectedCards.push({
+      card: cardData,
+      isReversed: isReversed
+    });
 
-  // 添加到已选列表
-  selectedCards.push({
-    card: cardData,
-    isReversed: isReversed
-  });
-
-  // 检查是否选满
-  if (selectedCards.length < MAX_CARDS) {
-    starRing.setSpeed('normal');
-  } else {
-    // 选满3张，激活揭示按钮
-    activateRevealButton();
-    disableMouseMode();
-    console.log('[main] 鼠标模式抽牌完成');
+    // 检查是否选满
+    if (selectedCards.length < MAX_CARDS) {
+      starRing.setSpeed('normal');
+    } else {
+      // 选满3张，激活揭示按钮
+      activateRevealButton();
+      disableMouseMode();
+      console.log('[main] 鼠标模式抽牌完成');
+    }
+  } catch (error) {
+    console.error('[main] 抓牌动画出错:', error);
+  } finally {
+    isGrabbing = false;
   }
-
-  isGrabbing = false;
 }
 
 // 显示鼠标模式提示

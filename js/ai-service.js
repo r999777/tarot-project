@@ -337,7 +337,8 @@ export class AIService {
       body: JSON.stringify({
         action: 'reading',
         readingToken: this.lastReadingToken,
-        contents: [{ parts: [{ text: systemPrompt + '\n\n' + userMessage }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ parts: [{ text: userMessage }] }],
         generationConfig: {
           maxOutputTokens: 2048,
           temperature: 1.2,          // 感性创作，增加神秘感和文采
@@ -500,7 +501,6 @@ export class AIService {
   }
 
   // 调用 Gemini API（带对话历史，通过服务端代理）
-  // 注意：追问时不再添加 systemPrompt，因为首次解读时已建立角色上下文
   async callGeminiWithHistory(messages, systemPrompt, onChunk) {
     this.abortController = new AbortController();
 
@@ -516,6 +516,7 @@ export class AIService {
       body: JSON.stringify({
         action: 'followup',
         readingToken: this.lastReadingToken,
+        systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: contents,
         generationConfig: {
           maxOutputTokens: 2048,

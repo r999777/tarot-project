@@ -49,7 +49,7 @@ export default async function handler(req) {
     });
   }
 
-  const { action, question, contents, generationConfig, readingToken } = await req.json();
+  const { action, question, contents, generationConfig, readingToken, systemInstruction } = await req.json();
   const ip = getClientIP(req);
 
   // --- action: classify (non-streaming, check + count) ---
@@ -130,7 +130,7 @@ export default async function handler(req) {
     const geminiRes = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents, generationConfig }),
+      body: JSON.stringify({ contents, generationConfig, ...(systemInstruction && { systemInstruction }) }),
     });
 
     if (!geminiRes.ok) {
@@ -170,7 +170,7 @@ export default async function handler(req) {
     const geminiRes = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents, generationConfig }),
+      body: JSON.stringify({ contents, generationConfig, ...(systemInstruction && { systemInstruction }) }),
     });
 
     if (!geminiRes.ok) {

@@ -65,6 +65,7 @@ tarot-project/
 
 - 每次完成改动后，询问我是否 commit 和 push
 - 得到确认后再执行 git add、commit、push
+- push 时必须同时推两个 remote：`git push origin main && git push gitee main`（Vercel 绑 GitHub origin，代码备份在 Gitee）
 - commit message 格式：`vX.X: 简短描述`
 
 ## 不要动的文件
