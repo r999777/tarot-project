@@ -12,9 +12,9 @@ import { GestureController } from './gesture.js?v=23';
 import { CardAnimator } from './card-animations.js?v=23';
 import { DebugControls } from './debug-controls.js?v=23';
 import { StorageService } from './storage.js?v=23';
-import { AIService } from './ai-service.js?v=23';
+import { AIService } from './ai-service.js?v=24';
 import { MouseController, isTouchDevice } from './mouse-controller.js?v=23';
-import { CONFIG } from './config.js?v=23';
+import { CONFIG } from './config.js?v=24';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;

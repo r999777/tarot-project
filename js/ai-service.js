@@ -2,7 +2,7 @@
 // AI Service - Claude/Gemini API 调用
 // ============================================
 
-import { CONFIG } from './config.js?v=23';
+import { CONFIG } from './config.js?v=24';
 
 export class AIService {
   constructor() {
@@ -575,7 +575,7 @@ export class AIService {
         readingToken: this.lastReadingToken,
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: 0,
+          temperature: 0.3,
           maxOutputTokens: 100,
         },
       }),
