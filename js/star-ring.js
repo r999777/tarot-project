@@ -67,11 +67,11 @@ export class StarRing {
     const radius = this.ringRadius || 10; // 默认半径
     this.particleSystems = [];
 
-    // 洗牌阶段：3000个紫色粒子，分成3组不同大小
+    // 洗牌阶段：1500个紫色粒子，分成3组不同大小
     const purpleGroups = [
-      { count: 1200, size: 0.28, opacity: 0.95 },  // 大粒子
-      { count: 1000, size: 0.18, opacity: 0.80 },  // 中粒子
-      { count: 800, size: 0.12, opacity: 0.65 },   // 小粒子
+      { count: 600, size: 0.28, opacity: 0.95 },  // 大粒子
+      { count: 500, size: 0.18, opacity: 0.80 },  // 中粒子
+      { count: 400, size: 0.12, opacity: 0.65 },  // 小粒子
     ];
 
     purpleGroups.forEach(group => {
@@ -110,11 +110,11 @@ export class StarRing {
       this.ringGroup.add(particles);
     });
 
-    // 同时创建多色粒子（初始隐藏）- 数量加倍
+    // 同时创建多色粒子（初始隐藏）
     const goldWhiteGroups = [
-      { type: 'gold', count: 4800 },
-      { type: 'white', count: 2000 },
-      { type: 'purple', count: 1200 },
+      { type: 'gold', count: 2400 },
+      { type: 'white', count: 1000 },
+      { type: 'purple', count: 600 },
     ];
 
     goldWhiteGroups.forEach(config => {
@@ -399,9 +399,9 @@ export class StarRing {
     const radius = this.ringRadius;
 
     const particleConfigs = [
-      { type: 'gold', count: 2400 },
-      { type: 'white', count: 1000 },
-      { type: 'purple', count: 600 },
+      { type: 'gold', count: 1200 },
+      { type: 'white', count: 500 },
+      { type: 'purple', count: 300 },
     ];
 
     particleConfigs.forEach(config => {
@@ -448,8 +448,8 @@ export class StarRing {
 
     // 只创建金色和白色粒子
     const particleConfigs = [
-      { type: 'gold', count: 2400 },
-      { type: 'white', count: 1000 },
+      { type: 'gold', count: 1200 },
+      { type: 'white', count: 500 },
     ];
 
     particleConfigs.forEach(config => {
@@ -724,9 +724,9 @@ export class StarRing {
 
     // 三种颜色粒子配置：金色为主，白色和紫色点缀
     const particleConfigs = [
-      { type: 'gold', count: 2400 },   // 60%
-      { type: 'white', count: 1000 },  // 25%
-      { type: 'purple', count: 600 },  // 15%
+      { type: 'gold', count: 1200 },   // 60%
+      { type: 'white', count: 500 },   // 25%
+      { type: 'purple', count: 300 },  // 15%
     ];
 
     particleConfigs.forEach(config => {
@@ -839,18 +839,17 @@ export class StarRing {
     }
   }
 
-  // 获取当前正对摄像头的牌
+  // 获取当前正对摄像头的牌（复用临时 Vector3，避免 GC 压力）
   getClosestCard(cameraPosition) {
     let closestCard = null;
     let minDistance = Infinity;
 
-    this.cardMeshes.forEach(mesh => {
-      // 获取牌的世界坐标
-      const worldPos = new THREE.Vector3();
-      mesh.getWorldPosition(worldPos);
+    // 复用同一个 Vector3，不在循环里 new
+    if (!this._tempVec3) this._tempVec3 = new THREE.Vector3();
 
-      // 计算到摄像头的距离
-      const distance = worldPos.distanceTo(cameraPosition);
+    this.cardMeshes.forEach(mesh => {
+      mesh.getWorldPosition(this._tempVec3);
+      const distance = this._tempVec3.distanceTo(cameraPosition);
       if (distance < minDistance) {
         minDistance = distance;
         closestCard = mesh;

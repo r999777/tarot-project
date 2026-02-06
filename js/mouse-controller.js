@@ -51,6 +51,14 @@ export class MouseController {
     this.touchStartTime = 0;
     this.touchStartPos = { x: 0, y: 0 };
 
+    // hover 节流：每 80ms 最多检测一次
+    this.lastHoverCheckTime = 0;
+    this.hoverThrottleMs = 80;
+
+    // 复用 Color 对象，避免每次 hover 都 new
+    this._hoverColor = new THREE.Color(0xd4af37);
+    this._normalColor = new THREE.Color(0x7c3aed);
+
     console.log('[mouse-controller] 初始化完成');
   }
 
@@ -156,8 +164,12 @@ export class MouseController {
 
       this.lastDragX = event.clientX;
     } else {
-      // 非拖拽模式：检测悬停
-      this.checkHover();
+      // 非拖拽模式：节流检测悬停
+      const now = performance.now();
+      if (now - this.lastHoverCheckTime >= this.hoverThrottleMs) {
+        this.lastHoverCheckTime = now;
+        this.checkHover();
+      }
     }
   }
 
@@ -340,7 +352,7 @@ export class MouseController {
     if (card.material) {
       card.userData.originalEmissiveIntensity = card.material.emissiveIntensity;
       card.material.emissiveIntensity = 0.5;
-      card.material.emissive = new THREE.Color(0xd4af37);  // 金色发光
+      card.material.emissive.copy(this._hoverColor);  // 金色发光
     }
 
     // 改变鼠标样式
@@ -359,7 +371,7 @@ export class MouseController {
       if (this.hoveredCard.material) {
         const originalIntensity = this.hoveredCard.userData.originalEmissiveIntensity || 0.1;
         this.hoveredCard.material.emissiveIntensity = originalIntensity;
-        this.hoveredCard.material.emissive = new THREE.Color(0x7c3aed);  // 恢复紫色
+        this.hoveredCard.material.emissive.copy(this._normalColor);  // 恢复紫色
       }
 
       this.hoveredCard = null;
