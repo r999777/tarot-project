@@ -385,7 +385,7 @@ export class AIService {
 
   // 获取解读（主入口）
   // Gemini 走服务端代理（不需要 apiKey），Claude 暂不处理
-  async getReading(question, cards, onChunk, conversationHistory = [], intuitionRecords = []) {
+  async getReading(question, cards, onChunk, conversationHistory = [], intuitionRecords = [], questionType = null) {
     // 判断是否为追问（有对话历史）
     const isFollowup = conversationHistory.length > 0;
 
@@ -394,8 +394,11 @@ export class AIService {
     let systemPrompt;
 
     if (isFollowup) {
-      // 追问：使用专用 prompt（不复用首次解读的格式模板）
-      systemPrompt = CONFIG.SYSTEM_PROMPT_FOLLOWUP;
+      // 追问：复用三大模板 + 追加追问规则
+      const template = CONFIG.getMainTemplate(questionType || 'analysis');
+      const now = new Date();
+      const currentDateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
+      systemPrompt = template.replace('{current_date}', currentDateStr) + CONFIG.FOLLOWUP_RULES;
 
       const messages = [
         ...conversationHistory,
@@ -558,9 +561,11 @@ export class AIService {
     }
   }
 
-  // 追问抽牌数量分类（通过服务端代理）
-  async classifyFollowupCards(question) {
-    const prompt = CONFIG.FOLLOWUP_CLASSIFY_PROMPT.replace('{question}', question);
+  // 追问合并分类器：意图分类（ABCD）+ 补牌判断（0-3 张）
+  async classifyFollowupIntent(question, cardSummary) {
+    const prompt = CONFIG.FOLLOWUP_CLASSIFIER_PROMPT
+      .replace('{question}', question)
+      .replace('{card_summary}', cardSummary);
 
     const response = await fetch(CONFIG.API.GEMINI_PROXY, {
       method: 'POST',
@@ -584,25 +589,35 @@ export class AIService {
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
     if (!text) {
-      console.warn('[AI] 追问分类返回空内容，回退为 1 张');
-      return { count: 1, reason: '为你的追问补充一张牌面' };
+      console.warn('[AI] 追问合并分类返回空内容，回退为 analysis + 0 张');
+      return { type: 'analysis', cards: 0, reason: '' };
     }
 
     try {
       // 尝试解析 JSON（AI 可能输出 ```json 包裹）
       const cleaned = text.replace(/```json\s*|\s*```/g, '').trim();
       const result = JSON.parse(cleaned);
-      const count = Math.max(1, Math.min(3, result.count || 1));
-      return { count, reason: result.reason || '' };
+
+      // 映射 type 字母到内部类型
+      const typeMap = { A: 'direct', B: 'fortune', C: 'analysis', D: 'invalid' };
+      const type = typeMap[result.type?.toUpperCase()] || 'analysis';
+      const cards = Math.max(0, Math.min(3, result.cards ?? 0));
+
+      console.log('[AI] 追问分类结果:', { type, cards, reason: result.reason || '' });
+      return { type, cards, reason: result.reason || '' };
     } catch (e) {
-      console.warn('[AI] 追问分类解析失败:', text, '回退为 1 张');
-      return { count: 1, reason: '为你的追问补充一张牌面' };
+      console.warn('[AI] 追问分类解析失败:', text, '回退为 analysis + 0 张');
+      return { type: 'analysis', cards: 0, reason: '' };
     }
   }
 
   // 带追加牌面的追问解读
-  async getFollowupWithCards(question, newCards, onChunk, conversationHistory = []) {
-    const systemPrompt = CONFIG.SYSTEM_PROMPT_FOLLOWUP_WITH_CARDS;
+  async getFollowupWithCards(question, newCards, onChunk, conversationHistory = [], questionType = null) {
+    // 复用三大模板 + 追问规则 + 补牌上下文
+    const template = CONFIG.getMainTemplate(questionType || 'analysis');
+    const now = new Date();
+    const currentDateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
+    const systemPrompt = template.replace('{current_date}', currentDateStr) + CONFIG.FOLLOWUP_RULES + CONFIG.FOLLOWUP_CARD_CONTEXT;
 
     // 构建追加牌面描述
     let cardInfo = '# 追加抽取的补充牌面\n\n';

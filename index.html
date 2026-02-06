@@ -1515,40 +1515,6 @@
       cursor: not-allowed;
     }
 
-    .followup-draw-btn {
-      height: 44px;
-      padding: 0 14px;
-      border: 1px solid rgba(201, 169, 98, 0.4);
-      border-radius: 22px;
-      background: rgba(201, 169, 98, 0.1);
-      color: var(--btn-secondary);
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      gap: 4px;
-      white-space: nowrap;
-    }
-
-    .followup-draw-btn:hover {
-      background: rgba(201, 169, 98, 0.25);
-      border-color: var(--btn-secondary);
-      box-shadow: 0 0 12px rgba(201, 169, 98, 0.3);
-    }
-
-    .followup-draw-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-
-    .followup-draw-btn.loading {
-      pointer-events: none;
-      animation: pulse 1.2s ease-in-out infinite;
-    }
-
     /* 追加抽牌浮层 */
     .followup-draw-overlay {
       position: fixed;
@@ -2199,10 +2165,6 @@
         width: 100%;
       }
 
-      .followup-draw-btn {
-        width: 100%;
-      }
-
       /* 直觉练习页面 */
       .intuition-title {
         font-size: 1.5rem;
@@ -2815,7 +2777,6 @@
       <div class="followup-input-wrapper">
         <input type="text" class="followup-input" id="followup-input" placeholder="还有什么想问的？">
         <button class="followup-btn" id="btn-followup" disabled>发送</button>
-        <button class="followup-draw-btn" id="btn-followup-draw" title="追加抽牌">🎴 抽牌</button>
       </div>
       <button class="btn btn-secondary result-home-btn" id="btn-result-home">返回首页</button>
     </div>
@@ -2923,6 +2884,6 @@
   }
   </script>
 
-  <script type="module" src="js/main.js?v=20"></script>
+  <script type="module" src="js/main.js?v=22"></script>
 </body>
 </html>
