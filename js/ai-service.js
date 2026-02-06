@@ -583,6 +583,11 @@ export class AIService {
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
+    if (!text) {
+      console.warn('[AI] 追问分类返回空内容，回退为 1 张');
+      return { count: 1, reason: '为你的追问补充一张牌面' };
+    }
+
     try {
       // 尝试解析 JSON（AI 可能输出 ```json 包裹）
       const cleaned = text.replace(/```json\s*|\s*```/g, '').trim();

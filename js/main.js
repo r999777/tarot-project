@@ -5,16 +5,16 @@
 console.log('[main] 应用启动');
 
 // 导入模块
-import { TarotScene } from './three-scene.js?v=18';
-import { StarRing } from './star-ring.js?v=18';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=18';
-import { GestureController } from './gesture.js?v=18';
-import { CardAnimator } from './card-animations.js?v=18';
-import { DebugControls } from './debug-controls.js?v=18';
-import { StorageService } from './storage.js?v=18';
-import { AIService } from './ai-service.js?v=18';
-import { MouseController, isTouchDevice } from './mouse-controller.js?v=18';
-import { CONFIG } from './config.js?v=18';
+import { TarotScene } from './three-scene.js?v=20';
+import { StarRing } from './star-ring.js?v=20';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=20';
+import { GestureController } from './gesture.js?v=20';
+import { CardAnimator } from './card-animations.js?v=20';
+import { DebugControls } from './debug-controls.js?v=20';
+import { StorageService } from './storage.js?v=20';
+import { AIService } from './ai-service.js?v=20';
+import { MouseController, isTouchDevice } from './mouse-controller.js?v=20';
+import { CONFIG } from './config.js?v=20';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -50,6 +50,7 @@ let followupDrawCards = [];
 let followupDrawTarget = 0;
 let pendingFollowupQuestion = '';
 let originalCanvasContainer = null;
+let followupDrawGeneration = 0; // 用于取消异步流程
 
 // DOM 元素
 const mainMenu = document.getElementById('main-menu');
@@ -1573,6 +1574,7 @@ async function callAIReading(followupQuestion = null) {
       followupInput.disabled = true;
       followupInput.placeholder = '已达追问上限（3 次）';
       btnFollowup.disabled = true;
+      btnFollowupDraw.disabled = true;
     } else {
       followupInput.disabled = false;
       followupInput.placeholder = `还可追问 ${MAX_FOLLOWUPS - followupCount} 次`;
@@ -1698,6 +1700,9 @@ async function openFollowupDraw() {
   const question = followupInput.value.trim();
   if (!question) return;
 
+  // 递增 generation，用于取消检测
+  const thisGeneration = ++followupDrawGeneration;
+
   // 暂存问题
   pendingFollowupQuestion = question;
   followupDrawCards = [];
@@ -1716,6 +1721,9 @@ async function openFollowupDraw() {
     followupDrawOverlay.classList.remove('hidden');
 
     const { count, reason } = await aiService.classifyFollowupCards(question);
+    // 取消检测：用户在分类期间关闭了浮层
+    if (thisGeneration !== followupDrawGeneration) return;
+
     followupDrawTarget = count;
 
     // 显示 AI 建议
@@ -1731,10 +1739,15 @@ async function openFollowupDraw() {
     const excludeNames = selectedCards.map(c => c.card.name);
     const filteredCards = allCards.filter(c => !excludeNames.includes(c.name));
     await starRing.rebuild(filteredCards);
+    // 取消检测：用户在重建星环期间关闭了浮层
+    if (thisGeneration !== followupDrawGeneration) return;
 
     // 快速洗牌动画（比首次短）
     await new Promise(r => setTimeout(r, 600));
+    if (thisGeneration !== followupDrawGeneration) return;
+
     await starRing.completeShuffleAnimation();
+    if (thisGeneration !== followupDrawGeneration) return;
 
     // 调整渲染尺寸
     scene.onResize();
@@ -1751,11 +1764,14 @@ async function openFollowupDraw() {
     btnFollowupDraw.classList.remove('loading');
 
   } catch (error) {
+    // 被取消时不需要恢复（closeFollowupDraw 已处理）
+    if (thisGeneration !== followupDrawGeneration) return;
     console.error('[main] 追加抽牌分类失败:', error);
     closeFollowupDraw();
     // 恢复输入
     followupInput.disabled = false;
     followupInput.value = pendingFollowupQuestion;
+    btnFollowup.disabled = followupInput.value.trim().length === 0;
     btnFollowupDraw.disabled = false;
     btnFollowupDraw.classList.remove('loading');
   }
@@ -1764,6 +1780,9 @@ async function openFollowupDraw() {
 // 关闭追加抽牌浮层
 function closeFollowupDraw() {
   isFollowupDrawing = false;
+  followupDrawCards = [];
+  followupDrawTarget = 0;
+  followupDrawGeneration++; // 使正在执行的 openFollowupDraw 异步流程失效
   followupDrawOverlay.classList.add('hidden');
 
   // 将 canvas 移回原容器
@@ -1844,8 +1863,12 @@ async function callAIReadingWithCards(followupQuestion, newCards) {
       conversationHistory
     );
 
-    // 更新对话历史
-    conversationHistory.push({ role: 'user', content: followupQuestion });
+    // 更新对话历史（包含牌面信息，让后续追问能引用追加牌面）
+    let cardSummary = '\n\n[追加牌面：' + newCards.map(c => {
+      const o = c.isReversed ? '逆位' : '正位';
+      return `${c.card.nameCN}(${o})`;
+    }).join('、') + ']';
+    conversationHistory.push({ role: 'user', content: followupQuestion + cardSummary });
     conversationHistory.push({ role: 'assistant', content: fullResponse });
 
     // 移除加载，显示回答
@@ -1866,10 +1889,20 @@ async function callAIReadingWithCards(followupQuestion, newCards) {
     resultContent.appendChild(errorEl);
   }
 
-  // 恢复输入
-  followupInput.disabled = false;
-  btnFollowup.disabled = true;
-  btnFollowupDraw.disabled = false;
+  // 检查追问次数（与 callAIReading 一致）
+  const followupCount = (conversationHistory.length / 2) - 1;
+  const MAX_FOLLOWUPS = 3;
+  if (followupCount >= MAX_FOLLOWUPS) {
+    followupInput.disabled = true;
+    followupInput.placeholder = '已达追问上限（3 次）';
+    btnFollowup.disabled = true;
+    btnFollowupDraw.disabled = true;
+  } else {
+    followupInput.disabled = false;
+    followupInput.placeholder = `还可追问 ${MAX_FOLLOWUPS - followupCount} 次`;
+    btnFollowup.disabled = true;
+    btnFollowupDraw.disabled = followupInput.value.trim().length === 0;
+  }
 }
 
 // 追问输入监听（同步控制发送和追加抽牌按钮）

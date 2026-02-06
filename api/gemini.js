@@ -174,6 +174,14 @@ export default async function handler(req) {
       body: JSON.stringify({ contents, generationConfig }),
     });
 
+    if (!geminiRes.ok) {
+      const errorText = await geminiRes.text();
+      return new Response(errorText, {
+        status: geminiRes.status,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     const data = await geminiRes.text();
     return new Response(data, {
       status: geminiRes.status,
