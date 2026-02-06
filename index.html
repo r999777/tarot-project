@@ -1515,6 +1515,177 @@
       cursor: not-allowed;
     }
 
+    .followup-draw-btn {
+      width: 44px;
+      height: 44px;
+      border: 1px solid rgba(201, 169, 98, 0.4);
+      border-radius: 50%;
+      background: rgba(201, 169, 98, 0.1);
+      color: var(--btn-secondary);
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .followup-draw-btn:hover {
+      background: rgba(201, 169, 98, 0.25);
+      border-color: var(--btn-secondary);
+      box-shadow: 0 0 12px rgba(201, 169, 98, 0.3);
+    }
+
+    .followup-draw-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .followup-draw-btn.loading {
+      pointer-events: none;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    /* 追加抽牌浮层 */
+    .followup-draw-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .followup-draw-overlay.hidden {
+      display: none;
+    }
+
+    .followup-draw-mask {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(26, 26, 46, 0.85);
+      backdrop-filter: blur(4px);
+    }
+
+    .followup-draw-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding: 20px;
+    }
+
+    .followup-draw-hint {
+      text-align: center;
+      color: var(--btn-secondary);
+      font-size: 1rem;
+      line-height: 1.6;
+      padding: 15px 20px;
+      background: rgba(201, 169, 98, 0.08);
+      border: 1px solid rgba(201, 169, 98, 0.2);
+      border-radius: 12px;
+      margin-bottom: 15px;
+    }
+
+    .followup-draw-canvas-area {
+      flex: 1;
+      min-height: 250px;
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .followup-draw-canvas-area canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .followup-draw-selected {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      padding: 15px 0;
+      min-height: 60px;
+      flex-wrap: wrap;
+    }
+
+    .followup-selected-card {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: rgba(201, 169, 98, 0.12);
+      border: 1px solid rgba(201, 169, 98, 0.3);
+      border-radius: 20px;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      animation: fadeInUp 0.3s ease;
+    }
+
+    .followup-selected-card img {
+      width: 28px;
+      height: 42px;
+      border-radius: 3px;
+      object-fit: cover;
+    }
+
+    .followup-draw-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      padding-top: 10px;
+    }
+
+    .followup-draw-actions .btn {
+      padding: 12px 28px;
+      border-radius: 25px;
+      font-size: 0.95rem;
+    }
+
+    /* 追加牌面在对话流中的展示 */
+    .followup-cards-display {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      padding: 12px 0;
+      flex-wrap: wrap;
+    }
+
+    .followup-card-mini {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px;
+      background: rgba(201, 169, 98, 0.08);
+      border: 1px solid rgba(201, 169, 98, 0.2);
+      border-radius: 8px;
+    }
+
+    .followup-card-mini img {
+      width: 50px;
+      height: 75px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
+    .followup-card-mini span {
+      font-size: 0.75rem;
+      color: var(--text-sub);
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     .result-home-btn {
       align-self: center;
       padding: 10px 30px;
@@ -2638,8 +2809,29 @@
       <div class="followup-input-wrapper">
         <input type="text" class="followup-input" id="followup-input" placeholder="还有什么想问的？">
         <button class="followup-btn" id="btn-followup" disabled>发送</button>
+        <button class="followup-draw-btn" id="btn-followup-draw" title="追加抽牌">🎴</button>
       </div>
       <button class="btn btn-secondary result-home-btn" id="btn-result-home">返回首页</button>
+    </div>
+  </div>
+
+  <!-- 追加抽牌浮层 -->
+  <div id="followup-draw-overlay" class="followup-draw-overlay hidden">
+    <div class="followup-draw-mask"></div>
+    <div class="followup-draw-content">
+      <div class="followup-draw-hint" id="followup-draw-hint">
+        ✨ 正在感应...
+      </div>
+      <div class="followup-draw-canvas-area" id="followup-canvas-area">
+        <!-- Three.js canvas 将被移入此处 -->
+      </div>
+      <div class="followup-draw-selected" id="followup-draw-selected">
+        <!-- 已选牌面展示 -->
+      </div>
+      <div class="followup-draw-actions">
+        <button class="btn btn-primary" id="btn-followup-done" disabled>完成抽牌，开始解读</button>
+        <button class="btn btn-secondary" id="btn-followup-cancel">取消</button>
+      </div>
     </div>
   </div>
 
@@ -2725,6 +2917,6 @@
   }
   </script>
 
-  <script type="module" src="js/main.js?v=17"></script>
+  <script type="module" src="js/main.js?v=18"></script>
 </body>
 </html>

@@ -558,6 +558,69 @@ export class AIService {
     }
   }
 
+  // 追问抽牌数量分类（通过服务端代理）
+  async classifyFollowupCards(question) {
+    const prompt = CONFIG.FOLLOWUP_CLASSIFY_PROMPT.replace('{question}', question);
+
+    const response = await fetch(CONFIG.API.GEMINI_PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'followup-classify',
+        readingToken: this.lastReadingToken,
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0,
+          maxOutputTokens: 100,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('分类请求失败');
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+    try {
+      // 尝试解析 JSON（AI 可能输出 ```json 包裹）
+      const cleaned = text.replace(/```json\s*|\s*```/g, '').trim();
+      const result = JSON.parse(cleaned);
+      const count = Math.max(1, Math.min(3, result.count || 1));
+      return { count, reason: result.reason || '' };
+    } catch (e) {
+      console.warn('[AI] 追问分类解析失败:', text, '回退为 1 张');
+      return { count: 1, reason: '为你的追问补充一张牌面' };
+    }
+  }
+
+  // 带追加牌面的追问解读
+  async getFollowupWithCards(question, newCards, onChunk, conversationHistory = []) {
+    const systemPrompt = CONFIG.SYSTEM_PROMPT_FOLLOWUP_WITH_CARDS;
+
+    // 构建追加牌面描述
+    let cardInfo = '# 追加抽取的补充牌面\n\n';
+    newCards.forEach((card, index) => {
+      const orientation = card.isReversed ? '逆位' : '正位';
+      const filename = card.card.imageFilename || '';
+      const cardType = filename.startsWith('m') ? '大阿卡纳' : '小阿卡纳';
+      cardInfo += `## 补充牌 ${index + 1}\n`;
+      cardInfo += `- 牌名：${card.card.nameCN}（${card.card.name}）\n`;
+      cardInfo += `- 类型：${cardType}\n`;
+      cardInfo += `- 正逆：${orientation}\n`;
+      cardInfo += `- 关键词：${card.card.keywords.join('、')}\n\n`;
+    });
+
+    const userMessage = `${question}\n\n---\n${cardInfo}`;
+
+    const messages = [
+      ...conversationHistory,
+      { role: 'user', content: userMessage }
+    ];
+    await this.callGeminiWithHistory(messages, systemPrompt, onChunk);
+  }
+
   // 中止当前请求
   abort() {
     if (this.abortController) {

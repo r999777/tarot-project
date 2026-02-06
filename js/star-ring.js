@@ -887,7 +887,8 @@ export class StarRing {
   }
 
   // 重建所有卡牌（重新进入占卜页面时调用）- 带洗牌动画
-  async rebuild() {
+  // filteredCards: 可选，传入过滤后的牌列表（追加抽牌时排除已选牌）
+  async rebuild(filteredCards) {
     // 移除现有卡牌
     this.cardMeshes.forEach(mesh => {
       this.ringGroup.remove(mesh);
@@ -904,14 +905,15 @@ export class StarRing {
     });
     this.particleSystems = [];
 
-    // 重新打乱牌序
-    this.cards = this.shuffleArray([...this.cards]);
+    // 使用过滤列表或原始牌组，重新打乱牌序
+    const sourceCards = filteredCards || this.cards;
+    this.cards = this.shuffleArray([...sourceCards]);
 
     // 进入洗牌阶段
     this.isShuffling = true;
     this.createShuffleParticles();
 
-    console.log('[star-ring] 星环重建中，洗牌阶段...');
+    console.log('[star-ring] 星环重建中，洗牌阶段...', '牌数:', this.cards.length);
   }
 
   dispose() {

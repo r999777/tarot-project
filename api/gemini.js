@@ -149,6 +149,38 @@ export default async function handler(req) {
     });
   }
 
+  // --- action: followup-classify (non-streaming, no counting) ---
+  if (action === 'followup-classify') {
+    // 验证 token 状态必须是 used（已完成 reading）
+    if (!readingToken) {
+      return new Response(JSON.stringify({ error: 'Missing token' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    const tokenStatus = await redis.get(`rtoken:${readingToken}`);
+    if (tokenStatus !== 'used') {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // 不计次、不改 token 状态
+    const url = `${GEMINI_BASE}:generateContent?key=${GEMINI_API_KEY}`;
+    const geminiRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents, generationConfig }),
+    });
+
+    const data = await geminiRes.text();
+    return new Response(data, {
+      status: geminiRes.status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   // --- action: followup (streaming, no counting) ---
   if (action === 'followup') {
     // 验证 token 状态必须是 used（已完成 reading）
