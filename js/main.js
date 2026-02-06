@@ -1371,27 +1371,25 @@ btnNext.addEventListener('click', () => {
 
 // 显示解读结果页面
 function showResultPage() {
-  // 隐藏星环页面，显示结果页面
+  // 隐藏星环页面
   readingPage.style.display = 'none';
-  resultPage.style.display = 'flex';
 
-  // 显示用户问题
-  resultQuestion.textContent = userQuestion;
-
-  // 渲染牌面
-  renderResultCards();
-
-  // 重置状态
+  // 先清空旧内容（在页面显示之前，避免移动端闪烁）
   resultLoading.classList.remove('visible');
   resultError.classList.remove('visible');
   resultReading.classList.remove('visible');
   resultReading.innerHTML = '';
   followupInput.value = '';
   btnFollowup.disabled = true;
-
-  // 清空之前的追问内容
   const resultContent = document.querySelector('.result-content');
   resultContent.querySelectorAll('.followup-question, .followup-answer, .followup-loading, .followup-cards-display').forEach(el => el.remove());
+
+  // 填充新内容
+  resultQuestion.textContent = userQuestion;
+  renderResultCards();
+
+  // 显示结果页面
+  resultPage.style.display = 'flex';
 
   // 开始 AI 解读
   callAIReading();
@@ -1770,6 +1768,43 @@ async function onFollowupCardSelect(cardMesh) {
   }
 }
 
+// 显示追加抽牌浮层的操作提示
+function showFollowupDrawHint() {
+  const hint = document.createElement('div');
+  hint.style.cssText = `
+    position: absolute;
+    top: 42%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 14px 28px;
+    border-radius: 25px;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    color: var(--text-main);
+    box-shadow: 0 0 15px rgba(123, 94, 167, 0.4);
+    text-align: center;
+    pointer-events: none;
+  `;
+
+  if (isTouchDevice()) {
+    hint.textContent = '滑动转动星环 · 点击选择补充牌';
+  } else {
+    hint.textContent = '按住左键拖拽转动 · 点击选择补充牌';
+  }
+
+  followupCanvasArea.appendChild(hint);
+  requestAnimationFrame(() => { hint.style.opacity = '1'; });
+
+  setTimeout(() => {
+    hint.style.opacity = '0';
+    setTimeout(() => hint.remove(), 500);
+  }, 3000);
+}
+
 // 打开追加抽牌浮层（由 callAIReading 分类后自动触发）
 async function openFollowupDraw(count, reason) {
   // 递增 generation，用于取消检测
@@ -1793,6 +1828,9 @@ async function openFollowupDraw(count, reason) {
     const canvas = scene.renderer.domElement;
     followupCanvasArea.appendChild(canvas);
     scene.container = followupCanvasArea;
+
+    // 立即调整渲染尺寸，避免 canvas 在新容器中被拉伸
+    scene.onResize();
 
     // 排除已选牌（初始 + 所有补牌），重建星环
     const excludeNames = [
@@ -1833,6 +1871,9 @@ async function openFollowupDraw(count, reason) {
     }
 
     isFollowupDrawing = true;
+
+    // 显示操作提示
+    showFollowupDrawHint();
 
   } catch (error) {
     if (thisGeneration !== followupDrawGeneration) return;
