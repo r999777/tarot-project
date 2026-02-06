@@ -583,7 +583,8 @@ function showMouseModeHint() {
     display: flex;
     gap: 120px;
     z-index: 100;
-    animation: fadeInUp 0.5s ease;
+    opacity: 0;
+    animation: fadeInUp 0.5s ease forwards;
   `;
 
   const boxStyle = `
@@ -759,8 +760,10 @@ function showMainMenu() {
     cardAnimator.cancelParticleConverge();
   }
 
-  // 重置用户问题
+  // 重置用户问题和追问状态
   userQuestion = '';
+  conversationHistory = [];
+  allSupplementaryCards = [];
 }
 
 // ============================================
@@ -1386,7 +1389,7 @@ function showResultPage() {
 
   // 清空之前的追问内容
   const resultContent = document.querySelector('.result-content');
-  resultContent.querySelectorAll('.followup-question, .followup-answer, .followup-loading').forEach(el => el.remove());
+  resultContent.querySelectorAll('.followup-question, .followup-answer, .followup-loading, .followup-cards-display').forEach(el => el.remove());
 
   // 开始 AI 解读
   callAIReading();
@@ -1706,6 +1709,13 @@ function resultToHome() {
   // 重置状态
   userQuestion = '';
   selectedCards = [];
+  conversationHistory = [];
+  allSupplementaryCards = [];
+
+  // 清空结果页追问内容
+  document.querySelector('.result-content')
+    .querySelectorAll('.followup-question, .followup-answer, .followup-loading, .followup-cards-display')
+    .forEach(el => el.remove());
 }
 
 // 结果页面事件绑定
