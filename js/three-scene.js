@@ -3,7 +3,7 @@
 // ============================================
 
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-import { CONFIG } from './config.js?v=30';
+import { CONFIG } from './config.js?v=31';
 
 export class TarotScene {
   constructor(container) {

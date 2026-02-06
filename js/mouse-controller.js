@@ -129,7 +129,7 @@ export class MouseController {
   onMouseDown(event) {
     if (!this.isEnabled) return;
 
-    console.log('[mouse-controller] mousedown, starRing:', !!this.starRing, 'ringGroup:', !!this.starRing?.ringGroup);
+    // console.log('[mouse-controller] mousedown');
 
     this.isDragging = true;
     this.dragStartX = event.clientX;
@@ -159,7 +159,7 @@ export class MouseController {
       // 直接旋转星环
       if (this.starRing && this.starRing.ringGroup) {
         this.starRing.ringGroup.rotation.y += this.dragVelocity;
-        console.log('[mouse-controller] 旋转星环, deltaX:', deltaX, 'rotation:', this.starRing.ringGroup.rotation.y);
+        // 热路径：不打日志
       }
 
       this.lastDragX = event.clientX;
@@ -249,7 +249,7 @@ export class MouseController {
       this.starRing.setEnabled(false);
     }
 
-    console.log('[mouse-controller] touchstart');
+    // console.log('[mouse-controller] touchstart');
   }
 
   onTouchMove(event) {
@@ -311,7 +311,7 @@ export class MouseController {
       }
     }
 
-    console.log('[mouse-controller] touchend, isTap:', isTap);
+    // console.log('[mouse-controller] touchend');
   }
 
   // 检测鼠标下的牌

@@ -3,7 +3,7 @@
 // ============================================
 
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-import { CONFIG } from './config.js?v=30';
+import { CONFIG } from './config.js?v=31';
 
 export class StarRing {
   constructor(cards) {
@@ -790,11 +790,19 @@ export class StarRing {
 
     this.particleTime += delta;
 
+    // 隔帧更新粒子（移动端性能优化：粒子 30fps 足够流畅）
+    if (!this._particleFrameCount) this._particleFrameCount = 0;
+    this._particleFrameCount++;
+    if (this._particleFrameCount % 2 !== 0) return;
+
     // 更新所有粒子系统（过渡动画期间跳过紫色洗牌粒子和隐藏的金白粒子）
     this.particleSystems.forEach((particles, systemIndex) => {
       // 洗牌阶段，跳过所有粒子（紫色由动画控制，金白隐藏）
       if (this.isShuffling) return;
       const positions = particles.geometry.attributes.position.array;
+      // 使用 2*delta 补偿隔帧
+      const adjustedDelta = delta * 2;
+      const baseSpeed = 0.9 + systemIndex * 0.05;
 
       for (let i = 0; i < positions.length / 3; i++) {
         const x = positions[i * 3];
@@ -803,9 +811,8 @@ export class StarRing {
         let angle = Math.atan2(z, x);
         const r = Math.sqrt(x * x + z * z);
 
-        // 缓慢绕圈飘动，不同系统速度略有差异
-        const speedVariation = 0.8 + Math.random() * 0.4 + systemIndex * 0.05;
-        angle += delta * 0.03 * speedVariation;
+        // 缓慢绕圈飘动（去掉 Math.random，用粒子索引做确定性变化）
+        angle += adjustedDelta * 0.03 * baseSpeed;
 
         positions[i * 3] = Math.cos(angle) * r;
         positions[i * 3 + 2] = Math.sin(angle) * r;
