@@ -430,6 +430,9 @@ export class AIService {
     systemPrompt = systemPrompt.replace('{current_date}', currentDateStr);
 
     if (isFollowup) {
+      // 追问：给 system prompt 追加追问模式说明
+      systemPrompt += `\n\n---\n【追问模式】\n你正在一次塔罗解读的追问环节。用户已完成首次三张牌的解读（对话历史中包含完整的牌面信息和你的解读），现在提出了追加问题。\n请注意：\n- 优先基于已有的牌面来回答追问。如果你认为需要补充抽取新牌来回答，可以这样做，但必须给出完整的深度解读，而不是仅仅列出牌名和属性\n- 直接给出解读内容，不要输出结构化的牌面信息列表（如"牌名：xxx / 类型：xxx / 关键词：xxx"这种格式）\n- 不要输出"牌面统计"、"直觉感悟"、"请根据以上信息进行解读"等模板标记\n- 回答要具体、有针对性，结合用户追问的实际问题\n- 用自然对话的方式回答，保持塔罗师的深度解读风格`;
+
       // 追问：使用对话历史 + 新问题
       const messages = [
         ...conversationHistory,
