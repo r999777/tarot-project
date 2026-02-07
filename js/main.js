@@ -5,11 +5,11 @@
 console.log('[main] 应用启动');
 
 // 导入轻量模块（不依赖 Three.js，首屏即加载）
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=67';
-import { GestureController } from './gesture.js?v=67';
-import { StorageService } from './storage.js?v=67';
-import { AIService } from './ai-service.js?v=67';
-import { CONFIG } from './config.js?v=67';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=68';
+import { GestureController } from './gesture.js?v=68';
+import { StorageService } from './storage.js?v=68';
+import { AIService } from './ai-service.js?v=68';
+import { CONFIG } from './config.js?v=68';
 
 // Three.js 相关模块延迟加载（进入占卜页时动态 import）
 // TarotScene, StarRing, CardAnimator, DebugControls, MouseController
@@ -202,9 +202,9 @@ async function initScene() {
     { StarRing },
     { CardAnimator },
   ] = await Promise.all([
-    import('./three-scene.js?v=67'),
-    import('./star-ring.js?v=67'),
-    import('./card-animations.js?v=67'),
+    import('./three-scene.js?v=68'),
+    import('./star-ring.js?v=68'),
+    import('./card-animations.js?v=68'),
   ]);
 
   const container = document.getElementById('canvas-container');
@@ -221,7 +221,7 @@ async function initScene() {
 
   // 调试模式：启用相机和卡槽调整
   if (DEBUG_MODE) {
-    const { DebugControls } = await import('./debug-controls.js?v=67');
+    const { DebugControls } = await import('./debug-controls.js?v=68');
     const debugControls = new DebugControls(scene.camera, scene.renderer, cardAnimator);
     scene.setDebugControls(debugControls);
     console.log('[main] 调试模式已启用');
@@ -580,7 +580,7 @@ async function enableMouseMode(showHint = true) {
   // 创建鼠标控制器（动态加载）
   if (!mouseController && scene && starRing) {
     console.log('[main] 创建鼠标控制器');
-    const { MouseController } = await import('./mouse-controller.js?v=67');
+    const { MouseController } = await import('./mouse-controller.js?v=68');
     mouseController = new MouseController({
       scene: scene,
       starRing: starRing,
@@ -1885,6 +1885,7 @@ async function saveAsImage() {
     return;
   }
 
+  const originalLabel = btnSaveImage.textContent;
   btnSaveImage.disabled = true;
   btnSaveImage.textContent = '生成中...';
 
@@ -1904,15 +1905,22 @@ async function saveAsImage() {
     footer.style.display = 'none';
     if (backBtn) backBtn.style.display = 'none';
 
+    // 先滚到顶部，确保截图完整
+    const scrollTop = resultPage.scrollTop;
+    resultPage.scrollTop = 0;
+
     // html2canvas 渲染
     const canvas = await html2canvas(resultPage, {
       backgroundColor: '#1a1a2e',
       scale: 2,
       useCORS: true,
-      scrollY: -window.scrollY,
+      allowTaint: true,
+      scrollY: 0,
+      windowHeight: resultPage.scrollHeight,
     });
 
-    // 恢复样式
+    // 恢复
+    resultPage.scrollTop = scrollTop;
     content.style.cssText = originalStyle;
     footer.style.display = footerDisplay;
     if (backBtn) backBtn.style.display = backDisplay;
@@ -1926,24 +1934,36 @@ async function saveAsImage() {
 
     // 导出
     canvas.toBlob(blob => {
+      if (!blob) {
+        console.error('[main] toBlob 返回 null');
+        btnSaveImage.disabled = false;
+        btnSaveImage.textContent = originalLabel;
+        return;
+      }
       if (navigator.share && /iPhone|iPad/.test(navigator.userAgent)) {
-        navigator.share({ files: [new File([blob], 'tarot-reading.png', { type: 'image/png' })] });
+        navigator.share({ files: [new File([blob], 'tarot-reading.png', { type: 'image/png' })] })
+          .catch(() => {});
       } else {
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
+        a.href = url;
         a.download = 'tarot-reading.png';
+        a.style.display = 'none';
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 500);
       }
       btnSaveImage.disabled = false;
-      btnSaveImage.textContent = '保存图片';
+      btnSaveImage.textContent = originalLabel;
     }, 'image/png');
   } catch (err) {
     console.error('[main] 保存图片失败:', err);
+    alert('保存图片失败: ' + err.message);
     btnSaveImage.disabled = false;
-    btnSaveImage.textContent = '保存图片';
+    btnSaveImage.textContent = originalLabel;
   }
 }
 
@@ -2083,7 +2103,7 @@ async function openFollowupDraw(count, reason) {
 
     // 设置鼠标控制器为追加模式（手势模式下也需要 mouseController 来操作浮层选牌）
     if (!mouseController && scene && starRing) {
-      const { MouseController } = await import('./mouse-controller.js?v=67');
+      const { MouseController } = await import('./mouse-controller.js?v=68');
       mouseController = new MouseController({
         scene: scene,
         starRing: starRing,
@@ -2448,7 +2468,7 @@ btnDailyHome.addEventListener('click', hideDailyPage);
 
 // 后台预加载 Three.js 相关模块（延迟 2 秒，避免和关键资源抢带宽）
 setTimeout(() => {
-  import('./three-scene.js?v=67').catch(() => {});
+  import('./three-scene.js?v=68').catch(() => {});
 }, 2000);
 
 console.log('[main] 事件绑定完成');
