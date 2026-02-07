@@ -1717,15 +1717,18 @@
       padding: 10px 30px;
     }
 
-    .result-footer-actions {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
+    .save-image-btn {
+      background: none;
+      border: none;
+      color: var(--text-sub);
+      font-size: 0.8rem;
+      cursor: pointer;
+      padding: 4px 12px;
+      font-family: var(--font-body);
+      align-self: flex-end;
+      transition: color 0.3s ease;
     }
-    .result-footer-actions .btn {
-      flex: 1;
-      max-width: 180px;
-    }
+    .save-image-btn:hover { color: var(--btn-secondary); }
 
     /* 每日一测页面 */
     #daily-page {
@@ -1764,8 +1767,8 @@
     }
     .daily-card-area { text-align: center; margin: 20px 0; }
     .daily-card {
-      width: 120px;
-      height: 200px;
+      width: 160px;
+      height: 267px;
       margin: 0 auto;
       perspective: 800px;
       cursor: pointer;
@@ -1779,6 +1782,11 @@
     }
     .daily-card.flipped .daily-card-inner {
       transform: rotateY(180deg);
+      animation: dailyBreathe 3s ease-in-out 0.8s infinite;
+    }
+    @keyframes dailyBreathe {
+      0%, 100% { transform: rotateY(180deg) scale(1); }
+      50% { transform: rotateY(180deg) scale(1.03); }
     }
     .daily-card-back, .daily-card-front {
       position: absolute;
@@ -1827,7 +1835,7 @@
       gap: 10px;
       margin: 20px 0;
     }
-    .daily-reading {
+    .daily-reading-stream {
       max-width: 600px;
       width: 100%;
       padding: 20px;
@@ -1835,6 +1843,54 @@
       color: var(--text-main);
       font-size: 0.95rem;
       font-family: var(--font-body);
+    }
+    .daily-result-card {
+      max-width: 400px;
+      width: 100%;
+      padding: 24px 20px;
+      text-align: center;
+    }
+    .daily-frequency {
+      font-size: 1.2rem;
+      color: var(--btn-secondary);
+      letter-spacing: 3px;
+      margin-bottom: 20px;
+      font-family: var(--font-display);
+    }
+    .daily-yiji {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin: 16px 0;
+      font-size: 0.95rem;
+    }
+    .daily-yi { color: var(--btn-secondary); }
+    .daily-ji { color: var(--text-sub); }
+    .daily-mirror {
+      color: var(--text-main);
+      font-size: 0.95rem;
+      line-height: 1.8;
+      margin: 20px 0;
+      font-family: var(--font-body);
+      font-style: italic;
+    }
+    .daily-ritual {
+      color: var(--text-sub);
+      font-size: 0.88rem;
+      line-height: 1.6;
+      margin: 12px 0;
+      font-family: var(--font-body);
+    }
+    .daily-quote-area {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(201, 169, 98, 0.2);
+    }
+    .daily-quote {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      color: var(--btn-secondary);
+      letter-spacing: 1px;
     }
     .daily-home-btn {
       margin-top: 20px;
@@ -2354,14 +2410,6 @@
         width: 100%;
       }
 
-      .result-footer-actions {
-        flex-direction: column;
-        align-items: center;
-      }
-      .result-footer-actions .btn {
-        max-width: none;
-        width: 100%;
-      }
 
       /* 直觉练习页面 */
       .intuition-title {
@@ -3013,14 +3061,12 @@
 
     <!-- 底部追问区域 -->
     <div class="result-footer">
+      <button class="save-image-btn" id="btn-save-image">保存图片</button>
       <div class="followup-input-wrapper">
         <input type="text" class="followup-input" id="followup-input" placeholder="还有什么想问的？">
         <button class="followup-btn" id="btn-followup" disabled>发送</button>
       </div>
-      <div class="result-footer-actions">
-        <button class="btn btn-secondary" id="btn-save-image">保存图片</button>
-        <button class="btn btn-secondary result-home-btn" id="btn-result-home">返回首页</button>
-      </div>
+      <button class="btn btn-secondary result-home-btn" id="btn-result-home">返回首页</button>
     </div>
   </div>
 
@@ -3050,7 +3096,22 @@
       <div class="loading-text">感应今日星象...</div>
     </div>
 
-    <div class="daily-reading" id="daily-reading"></div>
+    <!-- 流式输出时的临时容器 -->
+    <div class="daily-reading-stream" id="daily-reading-stream"></div>
+
+    <!-- 结构化展示（流完后切换显示） -->
+    <div class="daily-result-card" id="daily-result-card" style="display:none">
+      <div class="daily-frequency" id="daily-frequency"></div>
+      <div class="daily-yiji">
+        <div class="daily-yi">✅ 宜 <span id="daily-yi-text"></span></div>
+        <div class="daily-ji">❌ 忌 <span id="daily-ji-text"></span></div>
+      </div>
+      <div class="daily-mirror" id="daily-mirror"></div>
+      <div class="daily-ritual" id="daily-ritual"></div>
+      <div class="daily-quote-area">
+        <div class="daily-quote" id="daily-quote"></div>
+      </div>
+    </div>
 
     <button class="btn btn-secondary daily-home-btn" id="btn-daily-home">返回首页</button>
   </div>
@@ -3160,7 +3221,7 @@
   }
   </script>
 
-  <script type="module" src="js/main.js?v=66"></script>
+  <script type="module" src="js/main.js?v=67"></script>
   <script>
     // 安全网：如果 main.js 10 秒内没加载完，自动隐藏遮罩防止卡死
     setTimeout(function() {

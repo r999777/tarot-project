@@ -5,11 +5,11 @@
 console.log('[main] 应用启动');
 
 // 导入轻量模块（不依赖 Three.js，首屏即加载）
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=66';
-import { GestureController } from './gesture.js?v=66';
-import { StorageService } from './storage.js?v=66';
-import { AIService } from './ai-service.js?v=66';
-import { CONFIG } from './config.js?v=66';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=67';
+import { GestureController } from './gesture.js?v=67';
+import { StorageService } from './storage.js?v=67';
+import { AIService } from './ai-service.js?v=67';
+import { CONFIG } from './config.js?v=67';
 
 // Three.js 相关模块延迟加载（进入占卜页时动态 import）
 // TarotScene, StarRing, CardAnimator, DebugControls, MouseController
@@ -135,7 +135,14 @@ const dailyCard = document.getElementById('daily-card');
 const dailyCardImage = document.getElementById('daily-card-image');
 const dailyCardName = document.getElementById('daily-card-name');
 const dailyLoading = document.getElementById('daily-loading');
-const dailyReading = document.getElementById('daily-reading');
+const dailyReadingStream = document.getElementById('daily-reading-stream');
+const dailyResultCard = document.getElementById('daily-result-card');
+const dailyFrequency = document.getElementById('daily-frequency');
+const dailyYiText = document.getElementById('daily-yi-text');
+const dailyJiText = document.getElementById('daily-ji-text');
+const dailyMirror = document.getElementById('daily-mirror');
+const dailyRitual = document.getElementById('daily-ritual');
+const dailyQuote = document.getElementById('daily-quote');
 
 // 直觉练习页面 DOM 元素
 const intuitionPage = document.getElementById('intuition-page');
@@ -195,9 +202,9 @@ async function initScene() {
     { StarRing },
     { CardAnimator },
   ] = await Promise.all([
-    import('./three-scene.js?v=66'),
-    import('./star-ring.js?v=66'),
-    import('./card-animations.js?v=66'),
+    import('./three-scene.js?v=67'),
+    import('./star-ring.js?v=67'),
+    import('./card-animations.js?v=67'),
   ]);
 
   const container = document.getElementById('canvas-container');
@@ -214,7 +221,7 @@ async function initScene() {
 
   // 调试模式：启用相机和卡槽调整
   if (DEBUG_MODE) {
-    const { DebugControls } = await import('./debug-controls.js?v=66');
+    const { DebugControls } = await import('./debug-controls.js?v=67');
     const debugControls = new DebugControls(scene.camera, scene.renderer, cardAnimator);
     scene.setDebugControls(debugControls);
     console.log('[main] 调试模式已启用');
@@ -573,7 +580,7 @@ async function enableMouseMode(showHint = true) {
   // 创建鼠标控制器（动态加载）
   if (!mouseController && scene && starRing) {
     console.log('[main] 创建鼠标控制器');
-    const { MouseController } = await import('./mouse-controller.js?v=66');
+    const { MouseController } = await import('./mouse-controller.js?v=67');
     mouseController = new MouseController({
       scene: scene,
       starRing: starRing,
@@ -1873,6 +1880,11 @@ function resultToHome() {
 
 // 保存结果页为图片
 async function saveAsImage() {
+  if (typeof html2canvas === 'undefined') {
+    alert('图片组件尚未加载完成，请稍后再试');
+    return;
+  }
+
   btnSaveImage.disabled = true;
   btnSaveImage.textContent = '生成中...';
 
@@ -1920,8 +1932,10 @@ async function saveAsImage() {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = 'tarot-reading.png';
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(a.href);
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       }
       btnSaveImage.disabled = false;
       btnSaveImage.textContent = '保存图片';
@@ -2069,7 +2083,7 @@ async function openFollowupDraw(count, reason) {
 
     // 设置鼠标控制器为追加模式（手势模式下也需要 mouseController 来操作浮层选牌）
     if (!mouseController && scene && starRing) {
-      const { MouseController } = await import('./mouse-controller.js?v=66');
+      const { MouseController } = await import('./mouse-controller.js?v=67');
       mouseController = new MouseController({
         scene: scene,
         starRing: starRing,
@@ -2295,7 +2309,57 @@ function resetDailyPage() {
   dailyCardImage.style.backgroundImage = '';
   dailyCardName.textContent = '';
   dailyLoading.style.display = 'none';
-  dailyReading.innerHTML = '';
+  dailyReadingStream.innerHTML = '';
+  dailyReadingStream.style.display = '';
+  dailyResultCard.style.display = 'none';
+}
+
+// 解析结构化每日响应
+function parseDailyResponse(text) {
+  const sections = {};
+  const markers = ['今日频率', '宜 & 忌', '灵魂拷问', '微仪式', '星际格言'];
+  for (const marker of markers) {
+    const regex = new RegExp(`【${marker}】\\s*([\\s\\S]*?)(?=【|$)`);
+    const match = text.match(regex);
+    if (match) sections[marker] = match[1].trim();
+  }
+  // 解析宜忌
+  if (sections['宜 & 忌']) {
+    const yiMatch = sections['宜 & 忌'].match(/宜\s*(.+?)(?:\s*[❌|]|$)/);
+    const jiMatch = sections['宜 & 忌'].match(/忌\s*(.+?)$/m);
+    sections.yi = yiMatch ? yiMatch[1].trim() : '';
+    sections.ji = jiMatch ? jiMatch[1].trim() : '';
+  }
+  // 解析格言：去掉「」
+  if (sections['星际格言']) {
+    sections['星际格言'] = sections['星际格言'].replace(/[「」]/g, '').trim();
+  }
+  return sections;
+}
+
+// 填充结构化卡片
+function fillDailyCard(sections) {
+  dailyFrequency.textContent = sections['今日频率'] || '';
+  dailyYiText.textContent = sections.yi || '';
+  dailyJiText.textContent = sections.ji || '';
+  dailyMirror.textContent = sections['灵魂拷问'] || '';
+  dailyRitual.textContent = sections['微仪式'] || '';
+  dailyQuote.textContent = sections['星际格言'] || '';
+}
+
+// 尝试切换到结构化展示，失败则降级为 markdown
+function showDailyStructured(fullText) {
+  const sections = parseDailyResponse(fullText);
+  // 至少有频率和格言才算解析成功
+  if (sections['今日频率'] && sections['星际格言']) {
+    fillDailyCard(sections);
+    dailyReadingStream.style.display = 'none';
+    dailyResultCard.style.display = '';
+  } else {
+    // 降级：保持 stream 容器的 markdown 展示
+    console.log('[main] 每日响应解析失败，降级为 markdown');
+    dailyReadingStream.innerHTML = marked.parse(fullText);
+  }
 }
 
 async function showDailyPage() {
@@ -2316,7 +2380,7 @@ async function showDailyPage() {
   // 随机抽牌
   const cards = getAllCards();
   if (!cards || cards.length === 0) {
-    dailyReading.innerHTML = '<p style="color: #e74c3c">牌数据未加载，请刷新页面重试</p>';
+    dailyReadingStream.innerHTML = '<p style="color: #e74c3c">牌数据未加载，请刷新页面重试</p>';
     return;
   }
   const randomCard = cards[Math.floor(Math.random() * cards.length)];
@@ -2343,16 +2407,19 @@ async function showDailyPage() {
   try {
     await aiService.getDailyReading(card, (chunk) => {
       fullText += chunk;
-      dailyReading.innerHTML = marked.parse(fullText);
+      dailyReadingStream.innerHTML = marked.parse(fullText);
     });
     dailyLoading.style.display = 'none';
+
+    // 流式结束，切换到结构化展示
+    showDailyStructured(fullText);
 
     // 缓存结果
     StorageService.saveDailyReading({ card, text: fullText });
   } catch (err) {
     console.error('[main] 每日一测失败:', err);
     dailyLoading.style.display = 'none';
-    dailyReading.innerHTML = `<p style="color: #e74c3c">获取今日运势失败: ${err.message}</p>`;
+    dailyReadingStream.innerHTML = `<p style="color: #e74c3c">获取今日运势失败: ${err.message}</p>`;
   }
 }
 
@@ -2366,7 +2433,8 @@ function renderDailyResult(data) {
   dailyCardName.textContent = `${card.name}（${card.reversed ? '逆位' : '正位'}）`;
   dailyCard.classList.add('flipped');
   dailyLoading.style.display = 'none';
-  dailyReading.innerHTML = marked.parse(data.text);
+  // 缓存恢复直接用结构化展示
+  showDailyStructured(data.text);
 }
 
 function hideDailyPage() {
@@ -2380,7 +2448,7 @@ btnDailyHome.addEventListener('click', hideDailyPage);
 
 // 后台预加载 Three.js 相关模块（延迟 2 秒，避免和关键资源抢带宽）
 setTimeout(() => {
-  import('./three-scene.js?v=66').catch(() => {});
+  import('./three-scene.js?v=67').catch(() => {});
 }, 2000);
 
 console.log('[main] 事件绑定完成');
