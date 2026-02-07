@@ -5,16 +5,16 @@
 console.log('[main] 应用启动');
 
 // 导入模块
-import { TarotScene } from './three-scene.js?v=54';
-import { StarRing } from './star-ring.js?v=54';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=54';
-import { GestureController } from './gesture.js?v=54';
-import { CardAnimator } from './card-animations.js?v=54';
-import { DebugControls } from './debug-controls.js?v=54';
-import { StorageService } from './storage.js?v=54';
-import { AIService } from './ai-service.js?v=54';
-import { MouseController, isTouchDevice } from './mouse-controller.js?v=54';
-import { CONFIG } from './config.js?v=54';
+import { TarotScene } from './three-scene.js?v=55';
+import { StarRing } from './star-ring.js?v=55';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=55';
+import { GestureController } from './gesture.js?v=55';
+import { CardAnimator } from './card-animations.js?v=55';
+import { DebugControls } from './debug-controls.js?v=55';
+import { StorageService } from './storage.js?v=55';
+import { AIService } from './ai-service.js?v=55';
+import { MouseController, isTouchDevice } from './mouse-controller.js?v=55';
+import { CONFIG } from './config.js?v=55';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -202,12 +202,34 @@ const LOADING_PROGRESS_MAP = {
 };
 
 let _currentProgress = 0;
+let _slowProgressTimer = null;
+
 function updateLoadingProgress(pct) {
   // pct=0 用于重置，其他值只允许向前
   if (pct > 0 && pct <= _currentProgress) return;
   _currentProgress = pct;
   loadingProgressFill.style.width = pct + '%';
   loadingProgressPct.textContent = pct + '%';
+}
+
+// 慢速递增：下载完成后模型编译阶段，每600ms +1%，最多到98%
+function startSlowTick() {
+  if (_slowProgressTimer) return;
+  _slowProgressTimer = setInterval(() => {
+    if (_currentProgress < 98) {
+      updateLoadingProgress(_currentProgress + 1);
+    } else {
+      clearInterval(_slowProgressTimer);
+      _slowProgressTimer = null;
+    }
+  }, 600);
+}
+
+function stopSlowTick() {
+  if (_slowProgressTimer) {
+    clearInterval(_slowProgressTimer);
+    _slowProgressTimer = null;
+  }
 }
 
 // 初始化手势控制
@@ -232,9 +254,12 @@ async function initGesture() {
       // 将下载进度 0-100% 映射到整体进度 10-90%
       const overall = 10 + Math.round(downloadPct * 0.8);
       updateLoadingProgress(overall);
+      // 下载接近完成时启动慢速递增（覆盖 fetch 无法追踪的模型编译阶段）
+      if (downloadPct >= 80) startSlowTick();
     },
     onCameraReady: () => {
       console.log('[main] 摄像头就绪');
+      stopSlowTick();
       updateLoadingProgress(100);
       updateStepIndicator(1, 'active');
       // 短暂展示100%后隐藏
@@ -246,6 +271,7 @@ async function initGesture() {
     },
     onCameraError: (error) => {
       console.warn('[main] 摄像头不可用:', error.message);
+      stopSlowTick();
       // 显示失败提示，只保留鼠标按钮
       loadingProgress.classList.remove('visible');
       cameraFallback.classList.add('visible');
@@ -791,6 +817,7 @@ function resetUI() {
   const fallbackBtns = document.querySelector('.fallback-buttons');
   if (fallbackBtns) fallbackBtns.style.display = '';
   loadingProgress.classList.remove('visible');
+  stopSlowTick();
   updateLoadingProgress(0);
   btnUseMouse.textContent = isTouchDevice() ? '触屏点击 · 触碰命运' : '鼠标点击 · 触碰命运';
   // 重置洗牌提示状态
