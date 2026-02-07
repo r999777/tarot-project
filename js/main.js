@@ -2186,7 +2186,9 @@ if (_loadingOverlay) {
   setTimeout(() => _loadingOverlay.remove(), 400);
 }
 
-// 后台预加载 Three.js 相关模块（用户在主菜单停留时下载，进入占卜页时直接命中缓存）
-import('./three-scene.js?v=62');
+// 后台预加载 Three.js 相关模块（延迟 2 秒，避免和关键资源抢带宽）
+setTimeout(() => {
+  import('./three-scene.js?v=62').catch(() => {});
+}, 2000);
 
 console.log('[main] 事件绑定完成');
