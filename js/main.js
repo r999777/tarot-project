@@ -5,16 +5,16 @@
 console.log('[main] 应用启动');
 
 // 导入模块
-import { TarotScene } from './three-scene.js?v=49';
-import { StarRing } from './star-ring.js?v=49';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=49';
-import { GestureController } from './gesture.js?v=49';
-import { CardAnimator } from './card-animations.js?v=49';
-import { DebugControls } from './debug-controls.js?v=49';
-import { StorageService } from './storage.js?v=49';
-import { AIService } from './ai-service.js?v=49';
-import { MouseController, isTouchDevice } from './mouse-controller.js?v=49';
-import { CONFIG } from './config.js?v=49';
+import { TarotScene } from './three-scene.js?v=50';
+import { StarRing } from './star-ring.js?v=50';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=50';
+import { GestureController } from './gesture.js?v=50';
+import { CardAnimator } from './card-animations.js?v=50';
+import { DebugControls } from './debug-controls.js?v=50';
+import { StorageService } from './storage.js?v=50';
+import { AIService } from './ai-service.js?v=50';
+import { MouseController, isTouchDevice } from './mouse-controller.js?v=50';
+import { CONFIG } from './config.js?v=50';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -80,6 +80,9 @@ const fallbackTitle = document.getElementById('fallback-title');
 const btnEnableCamera = document.getElementById('btn-enable-camera');
 const btnUseMouse = document.getElementById('btn-use-mouse');
 const grabCancelHint = document.getElementById('grab-cancel-hint');
+const loadingProgress = document.getElementById('loading-progress');
+const loadingProgressFill = document.getElementById('loading-progress-fill');
+const loadingProgressPct = document.getElementById('loading-progress-pct');
 
 // 设置相关 DOM 元素
 const btnSettings = document.getElementById('btn-settings');
@@ -191,6 +194,21 @@ async function initScene() {
   console.log('[main] 3D场景初始化完成');
 }
 
+// 进度条状态映射
+const LOADING_PROGRESS_MAP = {
+  '正在加载手势引擎...': 15,
+  '正在下载手势模型...': 30,
+  '正在加载手势模型...': 35,
+  '正在加载手势模型，首次需要较长时间...': 40,
+  '模型加载较慢，请耐心等待...': 60,
+  '正在启动摄像头...': 80,
+};
+
+function updateLoadingProgress(pct) {
+  loadingProgressFill.style.width = pct + '%';
+  loadingProgressPct.textContent = pct + '%';
+}
+
 // 初始化手势控制
 async function initGesture() {
   // 如果已存在，重新初始化摄像头
@@ -206,20 +224,28 @@ async function initGesture() {
     onLoadingStatus: (status) => {
       console.log('[main] 手势加载状态:', status);
       fallbackTitle.textContent = status;
+      const pct = LOADING_PROGRESS_MAP[status];
+      if (pct) updateLoadingProgress(pct);
     },
     onCameraReady: () => {
       console.log('[main] 摄像头就绪');
+      updateLoadingProgress(100);
       updateStepIndicator(1, 'active');
-      // 隐藏选择界面，显示手势引导
-      cameraFallback.classList.remove('visible');
-      gestureGuide.classList.add('visible');
+      // 短暂展示100%后隐藏
+      setTimeout(() => {
+        cameraFallback.classList.remove('visible');
+        loadingProgress.classList.remove('visible');
+        gestureGuide.classList.add('visible');
+      }, 400);
     },
     onCameraError: (error) => {
       console.warn('[main] 摄像头不可用:', error.message);
       // 显示失败提示，只保留鼠标按钮
+      loadingProgress.classList.remove('visible');
       cameraFallback.classList.add('visible');
       fallbackTitle.textContent = '摄像头开启失败';
       btnEnableCamera.style.display = 'none';
+      document.querySelector('.fallback-buttons').style.display = '';
       btnUseMouse.textContent = '以鼠标触碰命运之牌';
     },
     onPalmOpen: () => {
@@ -758,6 +784,8 @@ function resetUI() {
   btnEnableCamera.textContent = '开启摄像头 · 手势抓牌';
   const fallbackBtns = document.querySelector('.fallback-buttons');
   if (fallbackBtns) fallbackBtns.style.display = '';
+  loadingProgress.classList.remove('visible');
+  updateLoadingProgress(0);
   btnUseMouse.textContent = isTouchDevice() ? '触屏点击 · 触碰命运' : '鼠标点击 · 触碰命运';
   // 重置洗牌提示状态
   shuffleText.classList.remove('fade-out');
@@ -1096,9 +1124,11 @@ questionInput.addEventListener('input', () => {
 
 // 摄像头选择按钮
 btnEnableCamera.addEventListener('click', () => {
-  // 显示加载状态，隐藏按钮
+  // 显示进度条，隐藏按钮
   fallbackTitle.textContent = '正在加载手势引擎...';
   document.querySelector('.fallback-buttons').style.display = 'none';
+  updateLoadingProgress(5);
+  loadingProgress.classList.add('visible');
   // 异步初始化（成功/失败在回调中处理）
   initGesture();
 });
