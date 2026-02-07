@@ -2,8 +2,8 @@
 // 牌面动画模块 - 粒子汇聚、翻牌、飞入卡槽
 // ============================================
 
-import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-import { CONFIG } from './config.js?v=31';
+import * as THREE from 'three';
+import { CONFIG } from './config.js?v=32';
 
 export class CardAnimator {
   constructor(scene, camera) {

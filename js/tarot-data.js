@@ -2,7 +2,7 @@
 // 塔罗牌数据管理
 // ============================================
 
-import { CONFIG } from './config.js?v=31';
+import { CONFIG } from './config.js?v=32';
 
 let tarotData = null;
 
@@ -31,7 +31,7 @@ export function getAllCards() {
 
 // 获取牌的图片URL
 export function getCardImageUrl(card) {
-  const baseUrl = tarotData?.imageBaseUrl || CONFIG.CARD_IMAGE_BASE_URL;
+  const baseUrl = CONFIG.CARD_IMAGE_BASE_URL;
   return baseUrl + card.imageFilename;
 }
 

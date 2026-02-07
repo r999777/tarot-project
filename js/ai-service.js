@@ -2,7 +2,7 @@
 // AI Service - Claude/Gemini API 调用
 // ============================================
 
-import { CONFIG } from './config.js?v=31';
+import { CONFIG } from './config.js?v=32';
 
 export class AIService {
   constructor() {

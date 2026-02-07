@@ -5,16 +5,16 @@
 console.log('[main] 应用启动');
 
 // 导入模块
-import { TarotScene } from './three-scene.js?v=31';
-import { StarRing } from './star-ring.js?v=31';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=31';
+import { TarotScene } from './three-scene.js?v=32';
+import { StarRing } from './star-ring.js?v=32';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=32';
 import { GestureController } from './gesture.js?v=29';
-import { CardAnimator } from './card-animations.js?v=31';
+import { CardAnimator } from './card-animations.js?v=32';
 import { DebugControls } from './debug-controls.js?v=29';
 import { StorageService } from './storage.js?v=29';
-import { AIService } from './ai-service.js?v=31';
-import { MouseController, isTouchDevice } from './mouse-controller.js?v=31';
-import { CONFIG } from './config.js?v=31';
+import { AIService } from './ai-service.js?v=32';
+import { MouseController, isTouchDevice } from './mouse-controller.js?v=32';
+import { CONFIG } from './config.js?v=32';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -1411,7 +1411,7 @@ function renderResultCards() {
     labelEl.textContent = labels[index];
 
     // 设置牌面图片
-    const imageUrl = `https://raw.githubusercontent.com/metabismuth/tarot-json/master/cards/${selected.card.imageFilename}`;
+    const imageUrl = getCardImageUrl(selected.card);
     imageEl.style.backgroundImage = `url(${imageUrl})`;
 
     // 逆位处理

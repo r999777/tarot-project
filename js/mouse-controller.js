@@ -2,7 +2,7 @@
 // 鼠标交互控制器 - 星环拖拽 + 牌面选择
 // ============================================
 
-import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+import * as THREE from 'three';
 
 export class MouseController {
   constructor(options = {}) {

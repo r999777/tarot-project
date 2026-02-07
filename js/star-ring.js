@@ -2,8 +2,8 @@
 // 塔罗星环 - 3D卡牌环形排列
 // ============================================
 
-import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-import { CONFIG } from './config.js?v=31';
+import * as THREE from 'three';
+import { CONFIG } from './config.js?v=32';
 
 export class StarRing {
   constructor(cards) {

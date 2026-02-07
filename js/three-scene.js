@@ -2,8 +2,8 @@
 // Three.js 3D场景管理
 // ============================================
 
-import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-import { CONFIG } from './config.js?v=31';
+import * as THREE from 'three';
+import { CONFIG } from './config.js?v=32';
 
 export class TarotScene {
   constructor(container) {
