@@ -1753,25 +1753,14 @@
       z-index: 10;
       font-family: var(--font-body);
     }
-    .daily-header { text-align: center; margin-bottom: 20px; }
-    .daily-title {
-      font-family: var(--font-display);
-      font-size: 1.5rem;
-      color: var(--btn-secondary);
-      margin: 0;
-    }
-    .daily-date {
-      color: var(--text-sub);
-      font-size: 0.9rem;
-      margin-top: 5px;
-    }
-    .daily-card-area { text-align: center; margin: 20px 0; }
+
+    /* 翻牌动画区 */
+    .daily-flip-area { text-align: center; margin: 30px 0 20px; }
     .daily-card {
-      width: 160px;
-      height: 267px;
+      width: 130px;
+      height: 217px;
       margin: 0 auto;
       perspective: 800px;
-      cursor: pointer;
     }
     .daily-card-inner {
       width: 100%;
@@ -1810,21 +1799,17 @@
       font-size: 28px;
       opacity: 0.8;
     }
-    .daily-card-front {
-      transform: rotateY(180deg);
-    }
+    .daily-card-front { transform: rotateY(180deg); }
     .daily-card-image {
       width: 100%;
       height: 100%;
       background-size: cover;
       background-position: center;
     }
-    .daily-card.reversed .daily-card-image {
-      transform: rotate(180deg);
-    }
+    .daily-card.reversed .daily-card-image { transform: rotate(180deg); }
     .daily-card-name {
       margin-top: 10px;
-      font-size: 1rem;
+      font-size: 0.9rem;
       color: var(--text-main);
       font-family: var(--font-body);
     }
@@ -1835,65 +1820,281 @@
       gap: 10px;
       margin: 20px 0;
     }
-    .daily-reading-stream {
-      max-width: 600px;
-      width: 100%;
-      padding: 20px;
-      line-height: 1.8;
-      color: var(--text-main);
-      font-size: 0.95rem;
+
+    /* 每日结果卡片 — 5 套主题色 */
+    .daily-result-card {
+      --dcr-bg1: #0f0e1a;
+      --dcr-bg2: #161224;
+      --dcr-rgb: 212,175,55;
+      --dcr-accent: #d4af37;
+      --dcr-card-bg1: #2a1f4e;
+      --dcr-card-bg2: #1a1235;
+      --dcr-text: #f5e6c4;
+      width: 380px;
+      max-width: 100%;
+      border-radius: 20px;
+      padding: 24px 22px 20px;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(160deg, var(--dcr-bg1), var(--dcr-bg2));
+      color: var(--dcr-text);
       font-family: var(--font-body);
     }
-    .daily-result-card {
-      max-width: 400px;
+    /* 渐变描边 */
+    .daily-result-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(var(--dcr-rgb),0.6), rgba(var(--dcr-rgb),0.1));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+    /* 星尘点缀 */
+    .daily-result-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      background:
+        radial-gradient(1px 1px at 15% 20%, rgba(var(--dcr-rgb),0.4), transparent),
+        radial-gradient(1px 1px at 85% 15%, rgba(var(--dcr-rgb),0.3), transparent),
+        radial-gradient(1px 1px at 40% 80%, rgba(var(--dcr-rgb),0.2), transparent),
+        radial-gradient(1px 1px at 70% 60%, rgba(var(--dcr-rgb),0.3), transparent),
+        radial-gradient(1px 1px at 25% 55%, rgba(var(--dcr-rgb),0.2), transparent),
+        radial-gradient(1px 1px at 90% 85%, rgba(var(--dcr-rgb),0.15), transparent);
+      pointer-events: none;
+    }
+
+    /* 主题色覆盖 */
+    .daily-result-card[data-theme="fire"] {
+      --dcr-bg1: #faf7f0; --dcr-bg2: #f5ede0;
+      --dcr-rgb: 120,90,40; --dcr-accent: #8a7030;
+      --dcr-card-bg1: #4a2a1a; --dcr-card-bg2: #2a1508;
+      --dcr-text: #3a3020;
+    }
+    .daily-result-card[data-theme="water"] {
+      --dcr-bg1: #f2f8f6; --dcr-bg2: #e8f3ef;
+      --dcr-rgb: 60,100,80; --dcr-accent: #3a7a5a;
+      --dcr-card-bg1: #1a3d30; --dcr-card-bg2: #0f2a20;
+      --dcr-text: #2a4a3a;
+    }
+    .daily-result-card[data-theme="air"] {
+      --dcr-bg1: #f5f2f8; --dcr-bg2: #ece6f3;
+      --dcr-rgb: 100,70,140; --dcr-accent: #6a4a9a;
+      --dcr-card-bg1: #3a2860; --dcr-card-bg2: #251845;
+      --dcr-text: #3a2a55;
+    }
+    .daily-result-card[data-theme="earth"] {
+      --dcr-bg1: #faf7f0; --dcr-bg2: #f2eadb;
+      --dcr-rgb: 130,100,50; --dcr-accent: #7a6428;
+      --dcr-card-bg1: #3a3018; --dcr-card-bg2: #22200e;
+      --dcr-text: #3a3520;
+    }
+    .daily-result-card[data-theme="major"] {
+      --dcr-bg1: #0f0e1a; --dcr-bg2: #161224;
+      --dcr-rgb: 212,175,55; --dcr-accent: #d4af37;
+      --dcr-card-bg1: #2a1f4e; --dcr-card-bg2: #1a1235;
+      --dcr-text: #f5e6c4;
+    }
+
+    /* 卡片内部布局 */
+    .dcr-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .dcr-brand {
+      font-family: var(--font-display);
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+      opacity: 0.7;
+    }
+    .dcr-date {
+      font-size: 0.75rem;
+      opacity: 0.6;
+      margin-top: 2px;
+    }
+    .dcr-tag {
+      font-size: 0.65rem;
+      padding: 3px 10px;
+      border: 1px solid rgba(var(--dcr-rgb), 0.4);
+      border-radius: 10px;
+      opacity: 0.7;
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+    .dcr-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--dcr-rgb), 0.3), transparent);
+      margin-bottom: 16px;
+    }
+
+    /* 主体：牌面 + 频率 */
+    .dcr-main {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .dcr-card-img-wrap {
+      flex-shrink: 0;
+      width: 110px;
+      height: 183px;
+      border-radius: 10px;
+      overflow: hidden;
+      background: linear-gradient(135deg, var(--dcr-card-bg1), var(--dcr-card-bg2));
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .dcr-card-img {
       width: 100%;
-      padding: 24px 20px;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .dcr-card-img.reversed { transform: rotate(180deg); }
+    .dcr-freq-area {
+      flex: 1;
+      text-align: left;
+    }
+    .dcr-freq-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      opacity: 0.5;
+      margin-bottom: 8px;
+    }
+    .dcr-freq-words {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      line-height: 1.8;
+      letter-spacing: 1px;
+      color: var(--dcr-accent);
+    }
+
+    /* 宜忌 */
+    .dcr-yiji {
+      display: flex;
+      gap: 0;
+      margin: 16px 0;
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: 0.88rem;
+    }
+    .dcr-yi, .dcr-ji {
+      flex: 1;
+      padding: 12px 14px;
+    }
+    .dcr-yi {
+      background: rgba(var(--dcr-rgb), 0.08);
+    }
+    .dcr-ji {
+      background: rgba(120, 40, 40, 0.08);
+    }
+    .dcr-yi-label, .dcr-ji-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+      opacity: 0.7;
+    }
+    .dcr-yi-label { color: var(--dcr-accent); }
+    .dcr-ji-label { color: #a05050; }
+    .dcr-yi-items { color: var(--dcr-accent); line-height: 1.6; }
+    .dcr-ji-items { color: #a05050; line-height: 1.6; }
+
+    /* 灵魂拷问 */
+    .dcr-question {
+      font-style: italic;
+      font-size: 0.92rem;
+      line-height: 1.7;
+      margin: 16px 0;
+      padding: 10px 14px;
+      border-left: 2px solid var(--dcr-accent);
+      text-align: left;
+      opacity: 0.9;
+    }
+
+    /* 微仪式 */
+    .dcr-ritual {
+      font-size: 0.85rem;
+      line-height: 1.6;
+      margin: 10px 0;
+      opacity: 0.7;
+      text-align: left;
+    }
+    .dcr-ritual::before {
+      content: '- ';
+    }
+
+    /* 星际格言 */
+    .dcr-motto-area {
+      margin-top: 18px;
       text-align: center;
     }
-    .daily-frequency {
-      font-size: 1.2rem;
-      color: var(--btn-secondary);
-      letter-spacing: 3px;
-      margin-bottom: 20px;
-      font-family: var(--font-display);
+    .dcr-motto-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--dcr-rgb), 0.25), transparent);
+      margin: 10px 0;
     }
-    .daily-yiji {
+    .dcr-motto {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      color: var(--dcr-accent);
+      letter-spacing: 1px;
+      padding: 6px 0;
+    }
+
+    /* 底部 */
+    .dcr-footer {
       display: flex;
-      justify-content: center;
-      gap: 30px;
-      margin: 16px 0;
-      font-size: 0.95rem;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(var(--dcr-rgb), 0.1);
     }
-    .daily-yi { color: var(--btn-secondary); }
-    .daily-ji { color: var(--text-sub); }
-    .daily-mirror {
-      color: var(--text-main);
-      font-size: 0.95rem;
-      line-height: 1.8;
-      margin: 20px 0;
-      font-family: var(--font-body);
-      font-style: italic;
-    }
-    .daily-ritual {
-      color: var(--text-sub);
-      font-size: 0.88rem;
-      line-height: 1.6;
-      margin: 12px 0;
-      font-family: var(--font-body);
-    }
-    .daily-quote-area {
-      margin-top: 24px;
-      padding-top: 16px;
-      border-top: 1px solid rgba(201, 169, 98, 0.2);
-    }
-    .daily-quote {
-      font-family: var(--font-display);
-      font-size: 1.05rem;
-      color: var(--btn-secondary);
+    .dcr-footer-brand {
+      font-size: 0.6rem;
+      opacity: 0.4;
       letter-spacing: 1px;
     }
-    .daily-home-btn {
+    .dcr-footer-qr {
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(var(--dcr-rgb), 0.15);
+      border-radius: 4px;
+      opacity: 0.3;
+    }
+
+    /* 按钮区域 */
+    .daily-actions {
+      display: flex;
+      gap: 16px;
       margin-top: 20px;
+    }
+    .daily-save-btn, .daily-copy-btn {
+      background: none;
+      border: 1px solid var(--text-sub);
+      color: var(--text-sub);
+      font-size: 0.82rem;
+      padding: 8px 20px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: all 0.3s ease;
+    }
+    .daily-save-btn:hover, .daily-copy-btn:hover {
+      border-color: var(--btn-secondary);
+      color: var(--btn-secondary);
+    }
+    .daily-home-btn {
+      margin-top: 16px;
       margin-bottom: 40px;
     }
 
@@ -3074,12 +3275,8 @@
   <div id="daily-page" style="display:none">
     <button class="back-btn daily-back-btn" id="btn-back-daily">← 返回</button>
 
-    <div class="daily-header">
-      <h2 class="daily-title">今日运势</h2>
-      <div class="daily-date" id="daily-date"></div>
-    </div>
-
-    <div class="daily-card-area">
+    <!-- 翻牌动画区（翻完后隐藏） -->
+    <div class="daily-flip-area" id="daily-flip-area">
       <div class="daily-card" id="daily-card">
         <div class="daily-card-inner">
           <div class="daily-card-back"></div>
@@ -3091,29 +3288,74 @@
       <div class="daily-card-name" id="daily-card-name"></div>
     </div>
 
+    <!-- 加载状态 -->
     <div class="daily-loading" id="daily-loading" style="display:none">
       <div class="loading-spinner"></div>
       <div class="loading-text">感应今日星象...</div>
     </div>
 
-    <!-- 流式输出时的临时容器 -->
-    <div class="daily-reading-stream" id="daily-reading-stream"></div>
-
-    <!-- 结构化展示（流完后切换显示） -->
+    <!-- 结果卡片（展示 = 截图目标，同一个 DOM） -->
     <div class="daily-result-card" id="daily-result-card" style="display:none">
-      <div class="daily-frequency" id="daily-frequency"></div>
-      <div class="daily-yiji">
-        <div class="daily-yi">✅ 宜 <span id="daily-yi-text"></span></div>
-        <div class="daily-ji">❌ 忌 <span id="daily-ji-text"></span></div>
+      <!-- 头部 -->
+      <div class="dcr-header">
+        <div class="dcr-header-left">
+          <div class="dcr-brand">MYSTAR TAROT</div>
+          <div class="dcr-date" id="dcr-date"></div>
+        </div>
+        <div class="dcr-tag">每日气象</div>
       </div>
-      <div class="daily-mirror" id="daily-mirror"></div>
-      <div class="daily-ritual" id="daily-ritual"></div>
-      <div class="daily-quote-area">
-        <div class="daily-quote" id="daily-quote"></div>
+      <div class="dcr-divider"></div>
+
+      <!-- 主体：牌面 + 频率 -->
+      <div class="dcr-main">
+        <div class="dcr-card-img-wrap">
+          <img class="dcr-card-img" id="dcr-card-img" src="" alt="tarot card" />
+        </div>
+        <div class="dcr-freq-area">
+          <div class="dcr-freq-label">今日频率</div>
+          <div class="dcr-freq-words" id="dcr-freq-words"></div>
+        </div>
+      </div>
+
+      <!-- 宜忌 -->
+      <div class="dcr-yiji">
+        <div class="dcr-yi">
+          <div class="dcr-yi-label">宜</div>
+          <div class="dcr-yi-items" id="dcr-yi-items"></div>
+        </div>
+        <div class="dcr-ji">
+          <div class="dcr-ji-label">忌</div>
+          <div class="dcr-ji-items" id="dcr-ji-items"></div>
+        </div>
+      </div>
+
+      <!-- 灵魂拷问 -->
+      <div class="dcr-question" id="dcr-question"></div>
+
+      <!-- 微仪式 -->
+      <div class="dcr-ritual" id="dcr-ritual"></div>
+
+      <!-- 星际格言 -->
+      <div class="dcr-motto-area">
+        <div class="dcr-motto-divider"></div>
+        <div class="dcr-motto" id="dcr-motto"></div>
+        <div class="dcr-motto-divider"></div>
+      </div>
+
+      <!-- 底部 -->
+      <div class="dcr-footer">
+        <div class="dcr-footer-brand">MYSTAR TAROT · intuitive-tarot.vercel.app</div>
+        <div class="dcr-footer-qr"></div>
       </div>
     </div>
 
-    <button class="btn btn-secondary daily-home-btn" id="btn-daily-home">返回首页</button>
+    <!-- 按钮（在截图范围之外） -->
+    <div class="daily-actions" id="daily-actions" style="display:none">
+      <button class="daily-save-btn" id="daily-save-btn">保存图片</button>
+      <button class="daily-copy-btn" id="daily-copy-btn">复制金句</button>
+    </div>
+
+    <button class="btn btn-secondary daily-home-btn" id="btn-daily-home" style="display:none">返回首页</button>
   </div>
 
   <!-- 追加抽牌浮层 -->
@@ -3221,7 +3463,8 @@
   }
   </script>
 
-  <script type="module" src="js/main.js?v=68"></script>
+  <script type="module" src="js/main.js?v=69"></script>
+  <script type="module" src="js/daily-tarot.js?v=69"></script>
   <script>
     // 安全网：如果 main.js 10 秒内没加载完，自动隐藏遮罩防止卡死
     setTimeout(function() {
