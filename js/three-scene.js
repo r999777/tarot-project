@@ -3,7 +3,7 @@
 // ============================================
 
 import * as THREE from 'three';
-import { CONFIG } from './config.js?v=51';
+import { CONFIG } from './config.js?v=52';
 
 export class TarotScene {
   constructor(container) {

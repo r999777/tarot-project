@@ -14,7 +14,7 @@ export class GestureController {
   static _installTracker() {
     if (GestureController._downloadTracker) return;
     const orig = window.fetch;
-    const tracker = { totalBytes: 0, loadedBytes: 0, orig, onProgress: null };
+    const tracker = { totalBytes: 0, loadedBytes: 0, lastPct: 0, orig, onProgress: null };
     window.fetch = function(input, init) {
       const url = typeof input === 'string' ? input : (input?.url || '');
       if (!url.includes('npmmirror.com')) return orig.call(window, input, init);
@@ -30,7 +30,11 @@ export class GestureController {
                 if (done) { ctrl.close(); return; }
                 tracker.loadedBytes += value.byteLength;
                 if (tracker.onProgress && tracker.totalBytes > 0) {
-                  tracker.onProgress(Math.min(99, Math.round(tracker.loadedBytes / tracker.totalBytes * 100)));
+                  const pct = Math.min(99, Math.round(tracker.loadedBytes / tracker.totalBytes * 100));
+                  if (pct > tracker.lastPct) {
+                    tracker.lastPct = pct;
+                    tracker.onProgress(pct);
+                  }
                 }
                 ctrl.enqueue(value);
                 pump();
