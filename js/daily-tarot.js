@@ -229,6 +229,43 @@ function renderResultCard(card, result, themeKey) {
 }
 
 // ============================================
+// 生成截图用的主题覆盖 CSS（html2canvas 不解析 var()）
+// ============================================
+function buildThemeCSS(theme) {
+  const r = theme.rgb;
+  const a = theme.accent;
+  return `
+    .daily-result-card {
+      background: linear-gradient(160deg, ${theme.bg[0]}, ${theme.bg[1]}) !important;
+      color: ${theme.text} !important;
+    }
+    .daily-result-card::before {
+      background: linear-gradient(135deg, rgba(${r},0.6), rgba(${r},0.1)) !important;
+    }
+    .daily-result-card::after {
+      background:
+        radial-gradient(1px 1px at 15% 20%, rgba(${r},0.4), transparent),
+        radial-gradient(1px 1px at 85% 15%, rgba(${r},0.3), transparent),
+        radial-gradient(1px 1px at 40% 80%, rgba(${r},0.2), transparent),
+        radial-gradient(1px 1px at 70% 60%, rgba(${r},0.3), transparent),
+        radial-gradient(1px 1px at 25% 55%, rgba(${r},0.2), transparent),
+        radial-gradient(1px 1px at 90% 85%, rgba(${r},0.15), transparent) !important;
+    }
+    .dcr-tag { border-color: rgba(${r},0.4) !important; }
+    .dcr-divider { background: linear-gradient(90deg, transparent, rgba(${r},0.3), transparent) !important; }
+    .dcr-card-img-wrap { background: linear-gradient(135deg, ${theme.cardBg[0]}, ${theme.cardBg[1]}) !important; }
+    .dcr-freq-words { color: ${a} !important; }
+    .dcr-yi { background: rgba(${r},0.08) !important; }
+    .dcr-yi-label, .dcr-yi-items { color: ${a} !important; }
+    .dcr-question { border-left-color: ${a} !important; }
+    .dcr-motto-divider { background: linear-gradient(90deg, transparent, rgba(${r},0.25), transparent) !important; }
+    .dcr-motto { color: ${a} !important; }
+    .dcr-footer { border-top-color: rgba(${r},0.1) !important; }
+    .dcr-footer-qr { border-color: rgba(${r},0.15) !important; }
+  `;
+}
+
+// ============================================
 // 保存图片
 // ============================================
 async function saveImage() {
@@ -241,12 +278,20 @@ async function saveImage() {
   btnSave.disabled = true;
   btnSave.textContent = '生成中...';
 
+  const themeKey = resultCard.getAttribute('data-theme');
+  const theme = THEMES[themeKey] || THEMES.major;
+
   try {
     const canvas = await html2canvas(resultCard, {
       backgroundColor: null,
       scale: 2,
       useCORS: true,
       allowTaint: true,
+      onclone: (clonedDoc) => {
+        const style = clonedDoc.createElement('style');
+        style.textContent = buildThemeCSS(theme);
+        clonedDoc.head.appendChild(style);
+      },
     });
 
     canvas.toBlob(async (blob) => {
