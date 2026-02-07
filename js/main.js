@@ -5,16 +5,16 @@
 console.log('[main] 应用启动');
 
 // 导入模块
-import { TarotScene } from './three-scene.js?v=48';
-import { StarRing } from './star-ring.js?v=48';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=48';
-import { GestureController } from './gesture.js?v=48';
-import { CardAnimator } from './card-animations.js?v=48';
-import { DebugControls } from './debug-controls.js?v=48';
-import { StorageService } from './storage.js?v=48';
-import { AIService } from './ai-service.js?v=48';
-import { MouseController, isTouchDevice } from './mouse-controller.js?v=48';
-import { CONFIG } from './config.js?v=48';
+import { TarotScene } from './three-scene.js?v=49';
+import { StarRing } from './star-ring.js?v=49';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=49';
+import { GestureController } from './gesture.js?v=49';
+import { CardAnimator } from './card-animations.js?v=49';
+import { DebugControls } from './debug-controls.js?v=49';
+import { StorageService } from './storage.js?v=49';
+import { AIService } from './ai-service.js?v=49';
+import { MouseController, isTouchDevice } from './mouse-controller.js?v=49';
+import { CONFIG } from './config.js?v=49';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -659,24 +659,31 @@ async function showReadingPage() {
   // 确保牌数据已加载完成
   await initData();
 
-  mainMenu.classList.add('hidden');
-  readingPage.style.display = 'block';
-
   // 重置状态
   selectedCards = [];
   pendingCard = null;
   isPalmActivated = false;
-  resetUI();
 
-  // 后台预加载 MediaPipe 手势模型（洗牌动画期间静默下载）
-  GestureController.preload();
+  // 首次进入需要初始化 3D 场景，保持当前页面显示避免空白
+  const isFirstInit = !scene;
+  if (isFirstInit) {
+    // 让 readingPage 进入 DOM 布局（Three.js 需要容器尺寸），但不可见
+    readingPage.style.display = 'block';
+    readingPage.style.opacity = '0';
+    await initScene();
+    readingPage.style.opacity = '';
+  } else {
+    readingPage.style.display = 'block';
+  }
+
+  // 场景就绪，隐藏之前的页面
+  questionPage.style.display = 'none';
+  mainMenu.classList.add('hidden');
+
+  resetUI();
 
   // 显示洗牌提示
   shuffleHint.classList.add('visible');
-
-  // 首次进入时初始化场景
-  const isFirstInit = !scene;
-  await initScene();
 
   // 重建星环（仅在非首次进入时，恢复被移除的卡牌）
   if (starRing && !isFirstInit) {
@@ -686,6 +693,9 @@ async function showReadingPage() {
       mouseController.setStarRing(starRing);
     }
   }
+
+  // 场景就绪后，利用洗牌动画时间后台预加载 MediaPipe 手势模型
+  GestureController.preload();
 
   // 洗牌动画：紫色粒子旋转一会，然后分散显示牌
   await new Promise(resolve => setTimeout(resolve, 1500));
@@ -1012,6 +1022,7 @@ function showQuestionPage() {
   // 清空之前的输入
   questionInput.value = '';
   btnStartReading.disabled = true;
+  btnStartReading.textContent = '进入星环';
   // 聚焦输入框
   setTimeout(() => questionInput.focus(), 100);
 }
@@ -1034,8 +1045,11 @@ function startReadingFromQuestion() {
 
   console.log('[main] 用户问题:', userQuestion, '| 注入直觉:', useIntuition);
 
-  // 隐藏问题页面，显示占卜页面
-  questionPage.style.display = 'none';
+  // 按钮显示加载中，防止重复点击
+  btnStartReading.disabled = true;
+  btnStartReading.textContent = '正在准备星环...';
+
+  // 先不隐藏问题页面，让 showReadingPage 准备好后再切换
   showReadingPage();
 }
 
