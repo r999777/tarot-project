@@ -5,16 +5,16 @@
 console.log('[main] 应用启动');
 
 // 导入模块
-import { TarotScene } from './three-scene.js?v=60';
-import { StarRing } from './star-ring.js?v=60';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=60';
-import { GestureController } from './gesture.js?v=60';
-import { CardAnimator } from './card-animations.js?v=60';
-import { DebugControls } from './debug-controls.js?v=60';
-import { StorageService } from './storage.js?v=60';
-import { AIService } from './ai-service.js?v=60';
-import { MouseController, isTouchDevice } from './mouse-controller.js?v=60';
-import { CONFIG } from './config.js?v=60';
+import { TarotScene } from './three-scene.js?v=61';
+import { StarRing } from './star-ring.js?v=61';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=61';
+import { GestureController } from './gesture.js?v=61';
+import { CardAnimator } from './card-animations.js?v=61';
+import { DebugControls } from './debug-controls.js?v=61';
+import { StorageService } from './storage.js?v=61';
+import { AIService } from './ai-service.js?v=61';
+import { MouseController, isTouchDevice } from './mouse-controller.js?v=61';
+import { CONFIG } from './config.js?v=61';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -212,12 +212,20 @@ function updateLoadingProgress(pct) {
   loadingProgressPct.textContent = pct + '%';
 }
 
-// 匀速慢递增：下载完成后模型编译阶段，每1秒+1%，最多到99%
+// 渐近递增：越接近99%越慢，永远不会真正到达99%
+let _slowProgressFloat = 0;
 function startSlowTick() {
   if (_slowProgressTimer) return;
+  _slowProgressFloat = _currentProgress;
   function tick() {
-    if (_currentProgress < 99) {
-      updateLoadingProgress(_currentProgress + 1);
+    // 如果外部已推进（如 onLoadingStatus 跳到95%），跟上
+    if (_slowProgressFloat < _currentProgress) {
+      _slowProgressFloat = _currentProgress;
+    }
+    const remaining = 99 - _slowProgressFloat;
+    if (remaining > 0.3) {
+      _slowProgressFloat += remaining * 0.06;
+      updateLoadingProgress(Math.round(_slowProgressFloat));
       _slowProgressTimer = setTimeout(tick, 1000);
     }
   }
