@@ -2,8 +2,8 @@
 // 每日一测 — 独立模块
 // ============================================
 
-import { CONFIG } from './config.js?v=74';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=74';
+import { CONFIG } from './config.js?v=75';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=75';
 
 console.log('[daily-tarot] 模块加载');
 
@@ -319,7 +319,7 @@ async function saveImage() {
 // ============================================
 async function copyMotto() {
   if (!currentMotto) return;
-  const text = `「${currentMotto}」\n— MYSTAR TAROT · tarot-project-bice.vercel.app`;
+  const text = `「${currentMotto}」\n— ✦ 星际塔罗 mystartarot.xyz`;
   try {
     await navigator.clipboard.writeText(text);
     const originalText = btnCopy.textContent;

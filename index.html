@@ -1715,6 +1715,8 @@
     .result-home-btn {
       align-self: center;
       padding: 10px 30px;
+      font-size: 0.85rem;
+      width: auto;
     }
 
     .save-image-btn {
@@ -1847,7 +1849,7 @@
       inset: 0;
       border-radius: 18px;
       padding: 1px;
-      background: linear-gradient(135deg, var(--dcr-lucky-color, rgba(var(--dcr-rgb),0.6)), rgba(var(--dcr-rgb),0.1));
+      background: linear-gradient(135deg, rgba(var(--dcr-rgb),0.6), rgba(var(--dcr-rgb),0.1));
       -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
       mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
       -webkit-mask-composite: xor;
@@ -1910,7 +1912,6 @@
       margin-bottom: 8px;
     }
     .dcr-brand {
-      font-family: var(--font-title);
       font-size: 0.7rem;
       letter-spacing: 2px;
       opacity: 0.7;
@@ -1992,7 +1993,7 @@
     }
     .dcr-yi {
       background: rgba(var(--dcr-rgb), 0.08);
-      border-left: 2px solid var(--dcr-lucky-color, var(--dcr-accent));
+      border-left: 2px solid var(--dcr-accent);
     }
     .dcr-ji {
       background: rgba(120, 40, 40, 0.08);
@@ -2040,7 +2041,9 @@
     }
     .dcr-lucky-text {
       font-size: 0.82rem;
-      line-height: 1.4;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
     }
     .dcr-lucky-color-name {
       font-weight: 600;
@@ -2048,9 +2051,6 @@
     }
     .dcr-lucky-action {
       opacity: 0.7;
-    }
-    .dcr-lucky-action::before {
-      content: ' · ';
     }
     .dcr-lucky-number {
       width: 42px;
@@ -2081,8 +2081,7 @@
       margin-bottom: 8px;
     }
     .dcr-question {
-      font-family: "STKaiti", "KaiTi", "楷体", serif;
-      font-size: 0.92rem;
+      font-size: 0.85rem;
       line-height: 1.7;
       padding: 10px 14px;
       border-left: 2px solid var(--dcr-accent);
@@ -3360,7 +3359,7 @@
       <!-- 头部 -->
       <div class="dcr-header">
         <div class="dcr-header-left">
-          <div class="dcr-brand">MYSTAR TAROT</div>
+          <div class="dcr-brand">✦ 星际塔罗</div>
           <div class="dcr-date" id="dcr-date"></div>
         </div>
         <div class="dcr-tag">每日气象</div>
@@ -3424,7 +3423,7 @@
 
       <!-- 底部 -->
       <div class="dcr-footer">
-        <div class="dcr-footer-brand">MYSTAR TAROT · tarot-project-bice.vercel.app</div>
+        <div class="dcr-footer-brand">✦ 星际塔罗  mystartarot.xyz</div>
         <div class="dcr-footer-qr"></div>
       </div>
     </div>
@@ -3523,7 +3522,7 @@
   <!-- Markdown 渲染库 -->
   <script src="vendor/marked.min.js"></script>
   <!-- 截图库（保存对话为图片） -->
-  <script src="vendor/dom-to-image-more.min.js?v=74"></script>
+  <script src="vendor/dom-to-image-more.min.js?v=75"></script>
   <script>
     // 确保 domtoimage 全局可用
     if (typeof window.domtoimage === 'undefined') {
@@ -3548,8 +3547,8 @@
   }
   </script>
 
-  <script type="module" src="js/main.js?v=74"></script>
-  <script type="module" src="js/daily-tarot.js?v=74"></script>
+  <script type="module" src="js/main.js?v=75"></script>
+  <script type="module" src="js/daily-tarot.js?v=75"></script>
   <script>
     // 安全网：如果 main.js 10 秒内没加载完，自动隐藏遮罩防止卡死
     setTimeout(function() {

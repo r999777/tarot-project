@@ -5,11 +5,11 @@
 console.log('[main] 应用启动');
 
 // 导入轻量模块（不依赖 Three.js，首屏即加载）
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=74';
-import { GestureController } from './gesture.js?v=74';
-import { StorageService } from './storage.js?v=74';
-import { AIService } from './ai-service.js?v=74';
-import { CONFIG } from './config.js?v=74';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=75';
+import { GestureController } from './gesture.js?v=75';
+import { StorageService } from './storage.js?v=75';
+import { AIService } from './ai-service.js?v=75';
+import { CONFIG } from './config.js?v=75';
 
 // Three.js 相关模块延迟加载（进入占卜页时动态 import）
 // TarotScene, StarRing, CardAnimator, DebugControls, MouseController
@@ -183,9 +183,9 @@ async function initScene() {
     { StarRing },
     { CardAnimator },
   ] = await Promise.all([
-    import('./three-scene.js?v=74'),
-    import('./star-ring.js?v=74'),
-    import('./card-animations.js?v=74'),
+    import('./three-scene.js?v=75'),
+    import('./star-ring.js?v=75'),
+    import('./card-animations.js?v=75'),
   ]);
 
   const container = document.getElementById('canvas-container');
@@ -202,7 +202,7 @@ async function initScene() {
 
   // 调试模式：启用相机和卡槽调整
   if (DEBUG_MODE) {
-    const { DebugControls } = await import('./debug-controls.js?v=74');
+    const { DebugControls } = await import('./debug-controls.js?v=75');
     const debugControls = new DebugControls(scene.camera, scene.renderer, cardAnimator);
     scene.setDebugControls(debugControls);
     console.log('[main] 调试模式已启用');
@@ -561,7 +561,7 @@ async function enableMouseMode(showHint = true) {
   // 创建鼠标控制器（动态加载）
   if (!mouseController && scene && starRing) {
     console.log('[main] 创建鼠标控制器');
-    const { MouseController } = await import('./mouse-controller.js?v=74');
+    const { MouseController } = await import('./mouse-controller.js?v=75');
     mouseController = new MouseController({
       scene: scene,
       starRing: starRing,
@@ -2092,7 +2092,7 @@ async function openFollowupDraw(count, reason) {
 
     // 设置鼠标控制器为追加模式（手势模式下也需要 mouseController 来操作浮层选牌）
     if (!mouseController && scene && starRing) {
-      const { MouseController } = await import('./mouse-controller.js?v=74');
+      const { MouseController } = await import('./mouse-controller.js?v=75');
       mouseController = new MouseController({
         scene: scene,
         starRing: starRing,
@@ -2311,7 +2311,7 @@ if (_loadingOverlay) {
 
 // 后台预加载 Three.js 相关模块（延迟 2 秒，避免和关键资源抢带宽）
 setTimeout(() => {
-  import('./three-scene.js?v=74').catch(() => {});
+  import('./three-scene.js?v=75').catch(() => {});
 }, 2000);
 
 console.log('[main] 事件绑定完成');
