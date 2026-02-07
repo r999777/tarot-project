@@ -239,7 +239,7 @@ function startSlowTick() {
     }
     const remaining = 99 - _slowProgressFloat;
     if (remaining > 0.3) {
-      _slowProgressFloat += remaining * 0.06;
+      _slowProgressFloat += remaining * 0.03;
       updateLoadingProgress(Math.round(_slowProgressFloat));
       _slowProgressTimer = setTimeout(tick, 1000);
     }
