@@ -2,7 +2,61 @@
 // 手势识别模块 - MediaPipe Hands
 // ============================================
 
+const MEDIAPIPE_CDN = 'https://cdn.npmmirror.com/packages/@mediapipe/hands/0.4.1675469240/files';
+
 export class GestureController {
+  // 静态预加载：进入选牌页时调用，后台下载模型
+  static _preloadPromise = null;
+  static _preloadedHands = null;
+
+  static preload() {
+    if (GestureController._preloadPromise) return GestureController._preloadPromise;
+
+    GestureController._preloadPromise = (async () => {
+      console.log('[gesture] 开始后台预加载');
+
+      // 1. 加载 hands.js 脚本
+      if (!window.Hands) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = `${MEDIAPIPE_CDN}/hands.js`;
+          script.crossOrigin = 'anonymous';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+
+      // 2. 创建 Hands 实例
+      const hands = new window.Hands({
+        locateFile: (file) => `${MEDIAPIPE_CDN}/${file}`
+      });
+      hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 0,
+        minDetectionConfidence: 0.7,
+        minTrackingConfidence: 0.5
+      });
+
+      // 3. 用 1x1 空白帧触发模型下载（这步最耗时）
+      await new Promise((resolve) => {
+        hands.onResults(() => resolve());
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        canvas.getContext('2d').fillRect(0, 0, 1, 1);
+        hands.send({ image: canvas }).catch(() => resolve());
+      });
+
+      GestureController._preloadedHands = hands;
+      console.log('[gesture] 预加载完成，模型已就绪');
+    })().catch(err => {
+      console.warn('[gesture] 预加载失败(可忽略):', err.message);
+    });
+
+    return GestureController._preloadPromise;
+  }
+
   constructor(options = {}) {
     this.onPalmOpen = options.onPalmOpen || (() => {});
     this.onFistStart = options.onFistStart || (() => {});
@@ -51,16 +105,34 @@ export class GestureController {
       this.videoElement.playsInline = true;
       document.body.appendChild(this.videoElement);
 
-      // 动态加载 MediaPipe
+      // 检查是否有预加载
+      if (GestureController._preloadPromise) {
+        this.onLoadingStatus('正在等待手势模型...');
+        await GestureController._preloadPromise;
+      }
+
+      if (GestureController._preloadedHands) {
+        // 使用预加载好的 Hands 实例（模型已下载完毕）
+        this.hands = GestureController._preloadedHands;
+        GestureController._preloadedHands = null;
+        this.hands.onResults((results) => this.onResults(results));
+
+        this.onLoadingStatus('正在启动摄像头...');
+        await this.startCamera();
+
+        this._modelReady = true;
+        this.onCameraReady();
+        console.log('[gesture] 使用预加载模型，初始化完成');
+        return true;
+      }
+
+      // 无预加载，完整初始化流程
       this.onLoadingStatus('正在加载手势引擎...');
       await this.loadMediaPipe();
 
-      // 初始化 MediaPipe Hands
       this.onLoadingStatus('正在下载手势模型...');
       this.hands = new window.Hands({
-        locateFile: (file) => {
-          return `https://cdn.npmmirror.com/packages/@mediapipe/hands/0.4.1675469240/files/${file}`;
-        }
+        locateFile: (file) => `${MEDIAPIPE_CDN}/${file}`
       });
 
       this.hands.setOptions({
@@ -98,7 +170,7 @@ export class GestureController {
       }
 
       const script = document.createElement('script');
-      script.src = 'https://cdn.npmmirror.com/packages/@mediapipe/hands/0.4.1675469240/files/hands.js';
+      script.src = `${MEDIAPIPE_CDN}/hands.js`;
       script.crossOrigin = 'anonymous';
       script.onload = () => {
         console.log('[gesture] MediaPipe Hands 加载完成');

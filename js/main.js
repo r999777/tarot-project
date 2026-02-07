@@ -8,7 +8,7 @@ console.log('[main] 应用启动');
 import { TarotScene } from './three-scene.js?v=33';
 import { StarRing } from './star-ring.js?v=33';
 import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=33';
-import { GestureController } from './gesture.js?v=40';
+import { GestureController } from './gesture.js?v=41';
 import { CardAnimator } from './card-animations.js?v=33';
 import { DebugControls } from './debug-controls.js?v=33';
 import { StorageService } from './storage.js?v=33';
@@ -667,6 +667,9 @@ async function showReadingPage() {
   pendingCard = null;
   isPalmActivated = false;
   resetUI();
+
+  // 后台预加载 MediaPipe 手势模型（洗牌动画期间静默下载）
+  GestureController.preload();
 
   // 显示洗牌提示
   shuffleHint.classList.add('visible');
