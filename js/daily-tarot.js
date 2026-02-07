@@ -2,8 +2,8 @@
 // 每日一测 — 独立模块
 // ============================================
 
-import { CONFIG } from './config.js?v=69';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=69';
+import { CONFIG } from './config.js?v=70';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=70';
 
 console.log('[daily-tarot] 模块加载');
 
@@ -215,7 +215,7 @@ function renderResultCard(card, result, themeKey) {
 // 保存图片（dom-to-image，原生支持 CSS 变量）
 // ============================================
 async function saveImage() {
-  if (typeof domtoimage === 'undefined') {
+  if (typeof window.domtoimage === 'undefined') {
     alert('图片组件尚未加载完成，请稍后再试');
     return;
   }
@@ -225,7 +225,7 @@ async function saveImage() {
   btnSave.textContent = '生成中...';
 
   try {
-    const dataUrl = await domtoimage.toPng(resultCard, { scale: 2 });
+    const dataUrl = await window.domtoimage.toPng(resultCard, { scale: 2 });
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 768);
 
     if (isMobile) {

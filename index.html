@@ -3450,7 +3450,14 @@
   <!-- Markdown 渲染库 -->
   <script src="vendor/marked.min.js"></script>
   <!-- 截图库（保存对话为图片） -->
-  <script src="vendor/dom-to-image-more.min.js"></script>
+  <script src="vendor/dom-to-image-more.min.js?v=70"></script>
+  <script>
+    // 确保 domtoimage 全局可用
+    if (typeof window.domtoimage === 'undefined') {
+      console.warn('[dom-to-image] 全局变量未注册，尝试 module.exports 回退');
+      try { if (typeof module !== 'undefined' && module.exports) window.domtoimage = module.exports; } catch(e) {}
+    }
+  </script>
   <script>
     // 安全配置：过滤 AI 返回内容中的原始 HTML，防止 XSS
     marked.setOptions({ breaks: true });
@@ -3468,8 +3475,8 @@
   }
   </script>
 
-  <script type="module" src="js/main.js?v=69"></script>
-  <script type="module" src="js/daily-tarot.js?v=69"></script>
+  <script type="module" src="js/main.js?v=70"></script>
+  <script type="module" src="js/daily-tarot.js?v=70"></script>
   <script>
     // 安全网：如果 main.js 10 秒内没加载完，自动隐藏遮罩防止卡死
     setTimeout(function() {
