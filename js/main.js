@@ -8,7 +8,7 @@ console.log('[main] 应用启动');
 import { TarotScene } from './three-scene.js?v=33';
 import { StarRing } from './star-ring.js?v=33';
 import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=33';
-import { GestureController } from './gesture.js?v=38';
+import { GestureController } from './gesture.js?v=39';
 import { CardAnimator } from './card-animations.js?v=33';
 import { DebugControls } from './debug-controls.js?v=33';
 import { StorageService } from './storage.js?v=33';

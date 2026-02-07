@@ -38,8 +38,9 @@ export class GestureController {
         this.videoElement.playsInline = true;
         document.body.appendChild(this.videoElement);
 
-        // 重新启动摄像头
+        // 重新启动摄像头（模型已加载，直接就绪）
         await this.startCamera();
+        this.onCameraReady();
         console.log('[gesture] 重新初始化完成');
         return true;
       }
@@ -74,6 +75,10 @@ export class GestureController {
       // 请求摄像头权限
       this.onLoadingStatus('正在启动摄像头...');
       await this.startCamera();
+
+      // 等待模型实际加载完成（第一次 send 才触发模型下载）
+      this.onLoadingStatus('正在加载手势模型，首次需要较长时间...');
+      await this.waitForModelReady();
 
       console.log('[gesture] 初始化完成');
       return true;
@@ -118,7 +123,6 @@ export class GestureController {
       await this.videoElement.play();
 
       this.isRunning = true;
-      this.onCameraReady();
       console.log('[gesture] 摄像头已启动');
 
       // 开始检测循环
@@ -129,6 +133,21 @@ export class GestureController {
       console.error('[gesture] 摄像头启动失败:', error);
       throw error;
     }
+  }
+
+  async waitForModelReady() {
+    return new Promise((resolve) => {
+      this._modelReadyResolve = resolve;
+      // 30秒超时，避免无限等待
+      this._modelReadyTimeout = setTimeout(() => {
+        if (this._modelReadyResolve) {
+          console.warn('[gesture] 模型加载超时(30s)，继续运行');
+          this._modelReadyResolve = null;
+          this.onCameraReady();
+          resolve();
+        }
+      }, 30000);
+    });
   }
 
   async detectLoop() {
@@ -146,6 +165,15 @@ export class GestureController {
   }
 
   onResults(results) {
+    // 首次收到结果 = 模型加载完成
+    if (this._modelReadyResolve) {
+      clearTimeout(this._modelReadyTimeout);
+      this._modelReadyResolve();
+      this._modelReadyResolve = null;
+      this.onCameraReady();
+      console.log('[gesture] 模型加载完成，手势识别就绪');
+    }
+
     if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
       // 没有检测到手 - 通过 handleGestureChange 处理，确保 onFistRelease 被调用
       if (this.currentGesture !== 'none') {
