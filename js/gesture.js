@@ -30,7 +30,7 @@ export class GestureController {
                 if (done) { ctrl.close(); return; }
                 tracker.loadedBytes += value.byteLength;
                 if (tracker.onProgress && tracker.totalBytes > 0) {
-                  const pct = Math.min(99, Math.round(tracker.loadedBytes / tracker.totalBytes * 100));
+                  const pct = Math.round(tracker.loadedBytes / tracker.totalBytes * 100);
                   if (pct > tracker.lastPct) {
                     tracker.lastPct = pct;
                     tracker.onProgress(pct);
@@ -168,7 +168,7 @@ export class GestureController {
             GestureController._downloadTracker.onProgress = (pct) => this.onLoadingProgress(pct);
             const t = GestureController._downloadTracker;
             if (t.totalBytes > 0) {
-              this.onLoadingProgress(Math.min(99, Math.round(t.loadedBytes / t.totalBytes * 100)));
+              this.onLoadingProgress(Math.round(t.loadedBytes / t.totalBytes * 100));
             }
           }
         }
@@ -181,6 +181,7 @@ export class GestureController {
         GestureController._preloadedHands = null;
         this.hands.onResults((results) => this.onResults(results));
         GestureController._removeTracker();
+        this.onLoadingProgress(100);
 
         this.onLoadingStatus('正在启动摄像头...');
         await this.startCamera();

@@ -5,16 +5,16 @@
 console.log('[main] 应用启动');
 
 // 导入模块
-import { TarotScene } from './three-scene.js?v=52';
-import { StarRing } from './star-ring.js?v=52';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=52';
-import { GestureController } from './gesture.js?v=52';
-import { CardAnimator } from './card-animations.js?v=52';
-import { DebugControls } from './debug-controls.js?v=52';
-import { StorageService } from './storage.js?v=52';
-import { AIService } from './ai-service.js?v=52';
-import { MouseController, isTouchDevice } from './mouse-controller.js?v=52';
-import { CONFIG } from './config.js?v=52';
+import { TarotScene } from './three-scene.js?v=53';
+import { StarRing } from './star-ring.js?v=53';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=53';
+import { GestureController } from './gesture.js?v=53';
+import { CardAnimator } from './card-animations.js?v=53';
+import { DebugControls } from './debug-controls.js?v=53';
+import { StorageService } from './storage.js?v=53';
+import { AIService } from './ai-service.js?v=53';
+import { MouseController, isTouchDevice } from './mouse-controller.js?v=53';
+import { CONFIG } from './config.js?v=53';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -198,9 +198,14 @@ async function initScene() {
 // 非下载阶段的固定进度（下载阶段由实时字节数驱动）
 const LOADING_PROGRESS_MAP = {
   '正在加载手势引擎...': 10,
+  '正在启动摄像头...': 95,
 };
 
+let _currentProgress = 0;
 function updateLoadingProgress(pct) {
+  // pct=0 用于重置，其他值只允许向前
+  if (pct > 0 && pct <= _currentProgress) return;
+  _currentProgress = pct;
   loadingProgressFill.style.width = pct + '%';
   loadingProgressPct.textContent = pct + '%';
 }
