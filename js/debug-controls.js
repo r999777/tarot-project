@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { CONFIG } from './config.js?v=59';
+import { CONFIG } from './config.js?v=60';
 
 export class DebugControls {
   constructor(camera, renderer, cardAnimator) {
