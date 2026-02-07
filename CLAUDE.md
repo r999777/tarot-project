@@ -24,6 +24,8 @@ tarot-project/
 ├── data/tarot-cards.json      # 78 张塔罗牌数据
 ├── assets/                    # 静态资源
 ├── backup/                    # 旧版本备份
+├── scripts/
+│   └── bump-version.sh        # 一键更新所有 ?v=N 版本号
 ├── dev-log.md                 # 开发日志
 └── 需求文档.md                 # 产品需求文档
 ```
@@ -54,10 +56,12 @@ tarot-project/
 - 中文注释，日志格式 `console.log('[module] message')`
 - DOM 元素在 main.js 顶部集中声明
 - 调试模式：`const DEBUG_MODE = false`
-- **缓存刷新**：无构建工具，靠 `?v=N` 查询参数破缓存。Vercel 对 `/js/*` 设置了 `immutable` 长缓存，所以**所有** JS 文件间的 import 都必须带 `?v=N`（不只是 main.js）。每次修改 `js/` 下的文件后，必须同步将以下位置的 `?v=N` 版本号统一 +1：
-  1. `index.html` 的 `<script src="js/main.js?v=N">`
-  2. `main.js` 中所有 import 语句
-  3. 子模块中的跨文件 import（如 `ai-service.js` 中的 `import { CONFIG } from './config.js?v=N'`）
+- **缓存刷新**：无构建工具，靠 `?v=N` 查询参数破缓存。Vercel 对 `/js/*` 设置了 `immutable` 长缓存，所以**所有** JS 文件间的 import 都必须带 `?v=N`。每次修改 `js/` 下的文件后，运行：
+  ```bash
+  ./scripts/bump-version.sh      # 自动 +1
+  ./scripts/bump-version.sh 50   # 或指定版本号
+  ```
+  脚本会统一更新 index.html + js/*.js 中所有 `?v=N`（共 8 个文件 17 处引用）。
 
 ### 状态管理
 - `AppState` 单例（state.js），六阶段：IDLE → QUESTION → SELECTING → READING → RESULT / INTUITION
