@@ -107,7 +107,7 @@ export class GestureController {
 
       // 检查是否有预加载
       if (GestureController._preloadPromise) {
-        this.onLoadingStatus('正在等待手势模型...');
+        this.onLoadingStatus('正在加载手势模型，首次需要较长时间...');
         await GestureController._preloadPromise;
       }
 
