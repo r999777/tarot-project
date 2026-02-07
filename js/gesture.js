@@ -136,17 +136,15 @@ export class GestureController {
   }
 
   async waitForModelReady() {
+    this._modelReady = false;
     return new Promise((resolve) => {
       this._modelReadyResolve = resolve;
-      // 30秒超时，避免无限等待
-      this._modelReadyTimeout = setTimeout(() => {
-        if (this._modelReadyResolve) {
-          console.warn('[gesture] 模型加载超时(30s)，继续运行');
-          this._modelReadyResolve = null;
-          this.onCameraReady();
-          resolve();
+      // 15秒后更新提示（但不隐藏、不resolve）
+      this._modelSlowTimer = setTimeout(() => {
+        if (!this._modelReady) {
+          this.onLoadingStatus('模型加载较慢，请耐心等待...');
         }
-      }, 30000);
+      }, 15000);
     });
   }
 
@@ -165,11 +163,14 @@ export class GestureController {
   }
 
   onResults(results) {
-    // 首次收到结果 = 模型加载完成
-    if (this._modelReadyResolve) {
-      clearTimeout(this._modelReadyTimeout);
-      this._modelReadyResolve();
-      this._modelReadyResolve = null;
+    // 首次收到结果 = 模型真正加载完成
+    if (!this._modelReady) {
+      this._modelReady = true;
+      clearTimeout(this._modelSlowTimer);
+      if (this._modelReadyResolve) {
+        this._modelReadyResolve();
+        this._modelReadyResolve = null;
+      }
       this.onCameraReady();
       console.log('[gesture] 模型加载完成，手势识别就绪');
     }
