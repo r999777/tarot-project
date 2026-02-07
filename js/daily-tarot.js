@@ -225,8 +225,9 @@ async function saveImage() {
   btnSave.textContent = '生成中...';
 
   try {
-    const dataUrl = await window.domtoimage.toPng(resultCard, { scale: 2 });
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 768);
+    const blob = await window.domtoimage.toBlob(resultCard, { scale: isMobile ? 1 : 2 });
+    const blobUrl = URL.createObjectURL(blob);
 
     if (isMobile) {
       // 手机端：弹出图片，长按保存
@@ -239,21 +240,24 @@ async function saveImage() {
         padding:20px; gap:16px;
       `;
       const img = document.createElement('img');
-      img.src = dataUrl;
       img.style.cssText = 'max-width:85%; max-height:70vh; border-radius:12px;';
       const tip = document.createElement('div');
       tip.textContent = '长按图片保存到相册';
       tip.style.cssText = 'color:#f5e6c4; font-size:14px; letter-spacing:1px;';
       overlay.appendChild(img);
       overlay.appendChild(tip);
-      overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-      document.body.appendChild(overlay);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.remove(); URL.revokeObjectURL(blobUrl); } });
+      // 等图片加载完再显示
+      img.onload = () => document.body.appendChild(overlay);
+      img.onerror = () => { URL.revokeObjectURL(blobUrl); alert('图片加载失败，请重试'); };
+      img.src = blobUrl;
     } else {
       // 电脑端：直接下载
       const link = document.createElement('a');
       link.download = '星际塔罗-每日气象.png';
-      link.href = dataUrl;
+      link.href = blobUrl;
       link.click();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     }
 
     btnSave.disabled = false;
