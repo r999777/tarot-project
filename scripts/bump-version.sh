@@ -25,29 +25,16 @@ fi
 echo "版本更新: ?v=$CURRENT → ?v=$NEW"
 echo ""
 
-# 需要更新的文件列表
-FILES=(
-  "index.html"
-  "js/main.js"
-  "js/three-scene.js"
-  "js/star-ring.js"
-  "js/card-animations.js"
-  "js/tarot-data.js"
-  "js/ai-service.js"
-  "js/debug-controls.js"
-)
-
+# 自动扫描所有含 ?v= 的文件（index.html + js/*.js）
 CHANGED=0
-for FILE in "${FILES[@]}"; do
-  FULL_PATH="$PROJECT_DIR/$FILE"
-  if [ -f "$FULL_PATH" ]; then
-    # 替换所有 ?v=数字 为新版本号
-    if grep -q '?v=[0-9]' "$FULL_PATH"; then
-      sed -i '' "s/?v=[0-9][0-9]*/?v=$NEW/g" "$FULL_PATH"
-      COUNT=$(grep -c "?v=$NEW" "$FULL_PATH")
-      echo "  ✓ $FILE ($COUNT 处)"
-      CHANGED=$((CHANGED + COUNT))
-    fi
+for FULL_PATH in "$PROJECT_DIR/index.html" "$PROJECT_DIR"/js/*.js; do
+  [ -f "$FULL_PATH" ] || continue
+  if grep -q '?v=[0-9]' "$FULL_PATH"; then
+    FILE="${FULL_PATH#$PROJECT_DIR/}"
+    sed -i '' "s/?v=[0-9][0-9]*/?v=$NEW/g" "$FULL_PATH"
+    COUNT=$(grep -c "?v=$NEW" "$FULL_PATH")
+    echo "  ✓ $FILE ($COUNT 处)"
+    CHANGED=$((CHANGED + COUNT))
   fi
 done
 
