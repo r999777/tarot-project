@@ -49,7 +49,7 @@ export default async function handler(req) {
     });
   }
 
-  const { action, question, contents, generationConfig, readingToken, systemInstruction } = await req.json();
+  const { action, question, contents, generationConfig, readingToken, systemInstruction, debug } = await req.json();
   const ip = getClientIP(req);
 
   // --- action: classify (non-streaming, check + count) ---
@@ -152,12 +152,14 @@ export default async function handler(req) {
   // --- action: daily (streaming, 独立计数，每天 1 次) ---
   if (action === 'daily') {
     const dailyKey = `daily:${ip}`;
-    const used = await redis.get(dailyKey);
-    if (used) {
-      return new Response(JSON.stringify({ error: '今日已测过，明天再来吧' }), {
-        status: 429,
-        headers: { 'Content-Type': 'application/json' },
-      });
+    if (!debug) {
+      const used = await redis.get(dailyKey);
+      if (used) {
+        return new Response(JSON.stringify({ error: '今日已测过，明天再来吧' }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
     }
     // 标记已用，TTL 到当天结束（最多 24 小时）
     const now = new Date();

@@ -802,3 +802,76 @@ RING_ROTATION_FAST: 10000ms (加速时)
 - **问题**：classify 失败时 `lastReadingToken` 保留上次的值，可能复用已过期/已消费的 token
 - **修复**：`classifyQuestionWithAI()` 入口处清空 `this.lastReadingToken = null`
 - **文件**：`js/ai-service.js`
+
+### 2026-02-07 (v1.5: 每日一测 v2 重构)
+
+#### 架构变更 — 独立模块化
+- **新建 `js/daily-tarot.js`** — 每日一测完全从 main.js 抽离为独立 ES Module
+  - 自包含：抽牌、API 调用、渲染、缓存、保存图片、复制金句
+  - 独立 `<script type="module">` 加载，与 main.js 无 import 依赖
+  - main.js 删除所有每日相关代码（DOM 引用 18 行 + 函数/事件 145 行）
+
+#### API 输出格式 — Markdown → JSON
+- **Prompt 重写**（`config.js` SYSTEM_PROMPT_DAILY）
+  - 从【】标记的 markdown 格式改为严格 JSON schema
+  - 字段：`frequency`（3 关键词数组）、`yi`/`ji`（各 2 条宜忌数组）、`question`（灵魂拷问）、`ritual`（微仪式）、`motto`（格言）
+- **API 调用**
+  - `generationConfig` 新增 `responseMimeType: 'application/json'`，Gemini 保证输出合法 JSON
+  - 温度 0.8 → 0.9（创意型内容需要更高温度）
+  - 仍走 `action: 'daily'`（streaming），客户端累积 SSE 后 `JSON.parse`
+
+#### 卡片式 UI — 5 套花色主题
+- **结果卡片**（`.daily-result-card`）
+  - 固定 380px 宽，圆角 20px
+  - 渐变描边（mask composite 技巧）
+  - 星尘点缀（radial-gradient 模拟）
+  - 布局：头部（品牌+日期+标签）→ 分割线 → 主体（牌面图+频率）→ 宜忌双栏 → 灵魂拷问 → 微仪式 → 星际格言 → 底部
+- **5 套主题色**（`data-theme` 属性切换 CSS 变量）
+  - `fire`（权杖）：米白暖调，棕色强调
+  - `water`（圣杯）：薄荷绿调，翠绿强调
+  - `air`（宝剑）：薰衣草调，紫色强调
+  - `earth`（星币）：大地暖米，褐色强调
+  - `major`（大阿卡纳）：暗金深色，金色强调
+- **花色判断**：`card.arcana === 'major'` → major；小阿卡纳按 `card.suit` 映射
+- **无 emoji**：宜忌用文字标签，微仪式用短横线前缀
+
+#### 核心交互
+- **翻牌动画**：复用现有 CSS 3D flip + 呼吸动画
+- **流程**：翻牌 → 加载 → 结果卡片（翻牌区隐藏）
+- **截图即展示**：结果卡片 DOM = html2canvas 截图目标，无双容器
+- **保存图片**：`navigator.canShare` 优先移动端分享，桌面端 `<a download>` 下载
+- **复制金句**：`navigator.clipboard.writeText` + execCommand 降级
+
+#### 缓存策略
+- 新 localStorage key：`daily_tarot_date` + `daily_tarot_result`（取代旧的 `tarot_daily_reading`）
+- 只缓存 `{ card: { id, reversed }, result }` 最小数据
+- 缓存命中时直接 `renderResultCard()`，不调 API
+
+#### 降级处理
+- JSON 解析失败 → "今日气象信号微弱，请明日再试"
+- html2canvas 未加载 → alert 提示
+
+#### 文件变更
+| 文件 | 操作 | 改动 |
+|------|------|------|
+| `js/daily-tarot.js` | 新建 | 独立模块 ~300 行 |
+| `index.html` | 修改 | 替换每日 HTML + CSS + 新增 script 标签 |
+| `js/config.js` | 修改 | SYSTEM_PROMPT_DAILY → JSON 格式 |
+| `js/main.js` | 修改 | 删除每日代码（DOM 引用 + 函数 + 事件） |
+| 9 个 JS 文件 | 修改 | `?v=68` → `?v=69` 缓存刷新 |
+
+---
+
+## 每日一测 Debug 模式
+
+### 用法
+在 URL 后加 `?daily-debug` 即可无限测试每日一测：
+```
+https://intuitive-tarot.vercel.app?daily-debug
+```
+效果：跳过 localStorage 缓存 + 跳过服务端每日 1 次限制。
+
+### 移除方法
+测试完毕后删除以下代码：
+1. **`js/daily-tarot.js`**：删除 `const DAILY_DEBUG = ...` 那 2 行，删除 `...(DAILY_DEBUG && { debug: true }),`，把 `DAILY_DEBUG ? null : getCachedResult()` 改回 `getCachedResult()`
+2. **`api/gemini.js`**：从解构中删除 `debug`，删除 `if (!debug) {` 包裹（恢复原来的直接检查）

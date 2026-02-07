@@ -7,6 +7,10 @@ import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=6
 
 console.log('[daily-tarot] 模块加载');
 
+// DEBUG: URL 含 ?daily-debug=1 时跳过缓存和服务端限制
+const DAILY_DEBUG = new URLSearchParams(window.location.search).has('daily-debug');
+if (DAILY_DEBUG) console.log('[daily-tarot] DEBUG 模式');
+
 // 5 套主题色（根据花色自动切换）
 const THEMES = {
   fire:  { bg: ['#faf7f0','#f5ede0'], rgb: '120,90,40', accent: '#8a7030', cardBg: ['#4a2a1a','#2a1508'], text: '#3a3020' },
@@ -109,6 +113,7 @@ async function callDailyAPI(card) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       action: 'daily',
+      ...(DAILY_DEBUG && { debug: true }),
       contents: [{ role: 'user', parts: [{ text: userMessage }] }],
       systemInstruction: { parts: [{ text: CONFIG.SYSTEM_PROMPT_DAILY }] },
       generationConfig: {
@@ -328,8 +333,8 @@ async function showDailyPage() {
   resetPage();
   dailyPage.style.display = 'flex';
 
-  // 检查缓存
-  const cached = getCachedResult();
+  // 检查缓存（debug 模式跳过）
+  const cached = DAILY_DEBUG ? null : getCachedResult();
   if (cached) {
     const cardData = getAllCards().find(c => c.id === cached.card.id);
     if (cardData) {
