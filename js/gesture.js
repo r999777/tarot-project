@@ -11,6 +11,7 @@ export class GestureController {
     this.onGestureChange = options.onGestureChange || (() => {});
     this.onCameraReady = options.onCameraReady || (() => {});
     this.onCameraError = options.onCameraError || (() => {});
+    this.onLoadingStatus = options.onLoadingStatus || (() => {});
 
     this.hands = null;
     this.camera = null;
@@ -50,9 +51,11 @@ export class GestureController {
       document.body.appendChild(this.videoElement);
 
       // 动态加载 MediaPipe
+      this.onLoadingStatus('正在加载手势引擎...');
       await this.loadMediaPipe();
 
       // 初始化 MediaPipe Hands
+      this.onLoadingStatus('正在下载手势模型...');
       this.hands = new window.Hands({
         locateFile: (file) => {
           return `https://cdn.npmmirror.com/packages/@mediapipe/hands/0.4.1675469240/files/${file}`;
@@ -61,7 +64,7 @@ export class GestureController {
 
       this.hands.setOptions({
         maxNumHands: 1,
-        modelComplexity: 1,
+        modelComplexity: 0,
         minDetectionConfidence: 0.7,
         minTrackingConfidence: 0.5
       });
@@ -69,6 +72,7 @@ export class GestureController {
       this.hands.onResults((results) => this.onResults(results));
 
       // 请求摄像头权限
+      this.onLoadingStatus('正在启动摄像头...');
       await this.startCamera();
 
       console.log('[gesture] 初始化完成');

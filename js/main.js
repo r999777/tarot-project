@@ -8,7 +8,7 @@ console.log('[main] 应用启动');
 import { TarotScene } from './three-scene.js?v=33';
 import { StarRing } from './star-ring.js?v=33';
 import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=33';
-import { GestureController } from './gesture.js?v=37';
+import { GestureController } from './gesture.js?v=38';
 import { CardAnimator } from './card-animations.js?v=33';
 import { DebugControls } from './debug-controls.js?v=33';
 import { StorageService } from './storage.js?v=33';
@@ -203,6 +203,10 @@ async function initGesture() {
   }
 
   gestureController = new GestureController({
+    onLoadingStatus: (status) => {
+      console.log('[main] 手势加载状态:', status);
+      fallbackTitle.textContent = status;
+    },
     onCameraReady: () => {
       console.log('[main] 摄像头就绪');
       updateStepIndicator(1, 'active');
@@ -739,6 +743,8 @@ function resetUI() {
   fallbackTitle.textContent = '请选择抓牌方式';
   btnEnableCamera.style.display = '';
   btnEnableCamera.textContent = '开启摄像头 · 手势抓牌';
+  const fallbackBtns = document.querySelector('.fallback-buttons');
+  if (fallbackBtns) fallbackBtns.style.display = '';
   btnUseMouse.textContent = isTouchDevice() ? '触屏点击 · 触碰命运' : '鼠标点击 · 触碰命运';
   // 重置洗牌提示状态
   shuffleText.classList.remove('fade-out');
@@ -1073,8 +1079,9 @@ questionInput.addEventListener('input', () => {
 
 // 摄像头选择按钮
 btnEnableCamera.addEventListener('click', () => {
-  // 立即隐藏选择界面，后台加载摄像头
-  cameraFallback.classList.remove('visible');
+  // 显示加载状态，隐藏按钮
+  fallbackTitle.textContent = '正在加载手势引擎...';
+  document.querySelector('.fallback-buttons').style.display = 'none';
   // 异步初始化（成功/失败在回调中处理）
   initGesture();
 });
