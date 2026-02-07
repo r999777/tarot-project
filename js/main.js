@@ -5,16 +5,16 @@
 console.log('[main] 应用启动');
 
 // 导入模块
-import { TarotScene } from './three-scene.js?v=56';
-import { StarRing } from './star-ring.js?v=56';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=56';
-import { GestureController } from './gesture.js?v=56';
-import { CardAnimator } from './card-animations.js?v=56';
-import { DebugControls } from './debug-controls.js?v=56';
-import { StorageService } from './storage.js?v=56';
-import { AIService } from './ai-service.js?v=56';
-import { MouseController, isTouchDevice } from './mouse-controller.js?v=56';
-import { CONFIG } from './config.js?v=56';
+import { TarotScene } from './three-scene.js?v=57';
+import { StarRing } from './star-ring.js?v=57';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=57';
+import { GestureController } from './gesture.js?v=57';
+import { CardAnimator } from './card-animations.js?v=57';
+import { DebugControls } from './debug-controls.js?v=57';
+import { StorageService } from './storage.js?v=57';
+import { AIService } from './ai-service.js?v=57';
+import { MouseController, isTouchDevice } from './mouse-controller.js?v=57';
+import { CONFIG } from './config.js?v=57';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -212,18 +212,16 @@ function updateLoadingProgress(pct) {
   loadingProgressPct.textContent = pct + '%';
 }
 
-// 减速递增：下载完成后模型编译阶段，越接近99%越慢
+// 匀速慢递增：下载完成后模型编译阶段，每1秒+1%，最多到99%
 function startSlowTick() {
   if (_slowProgressTimer) return;
   function tick() {
     if (_currentProgress < 99) {
       updateLoadingProgress(_currentProgress + 1);
-      // 85%以下每600ms，之后每多1%多300ms，让进度条持续缓慢移动
-      const delay = 600 + Math.max(0, _currentProgress - 85) * 300;
-      _slowProgressTimer = setTimeout(tick, delay);
+      _slowProgressTimer = setTimeout(tick, 1000);
     }
   }
-  _slowProgressTimer = setTimeout(tick, 600);
+  _slowProgressTimer = setTimeout(tick, 1000);
 }
 
 function stopSlowTick() {
@@ -252,8 +250,8 @@ async function initGesture() {
       if (pct) updateLoadingProgress(pct);
     },
     onLoadingProgress: (downloadPct) => {
-      // 将下载进度 0-100% 映射到整体进度 10-90%
-      const overall = 10 + Math.round(downloadPct * 0.8);
+      // 将下载进度 0-100% 映射到整体进度 10-65%（留空间给模型编译）
+      const overall = 10 + Math.round(downloadPct * 0.55);
       updateLoadingProgress(overall);
       // 下载接近完成时启动慢速递增（覆盖 fetch 无法追踪的模型编译阶段）
       if (downloadPct >= 80) startSlowTick();

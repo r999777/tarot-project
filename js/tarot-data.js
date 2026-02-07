@@ -2,7 +2,7 @@
 // 塔罗牌数据管理
 // ============================================
 
-import { CONFIG } from './config.js?v=56';
+import { CONFIG } from './config.js?v=57';
 
 let tarotData = null;
 
