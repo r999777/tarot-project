@@ -8,6 +8,49 @@ export class GestureController {
   // 静态预加载：进入选牌页时调用，后台下载模型
   static _preloadPromise = null;
   static _preloadedHands = null;
+  static _downloadTracker = null;
+
+  // 拦截 fetch 追踪 MediaPipe CDN 下载字节数
+  static _installTracker() {
+    if (GestureController._downloadTracker) return;
+    const orig = window.fetch;
+    const tracker = { totalBytes: 0, loadedBytes: 0, orig, onProgress: null };
+    window.fetch = function(input, init) {
+      const url = typeof input === 'string' ? input : (input?.url || '');
+      if (!url.includes('npmmirror.com')) return orig.call(window, input, init);
+      return orig.call(window, input, init).then(res => {
+        const len = parseInt(res.headers.get('content-length') || '0');
+        if (len) tracker.totalBytes += len;
+        if (!res.body) return res;
+        const reader = res.body.getReader();
+        return new Response(new ReadableStream({
+          start(ctrl) {
+            (function pump() {
+              reader.read().then(({ done, value }) => {
+                if (done) { ctrl.close(); return; }
+                tracker.loadedBytes += value.byteLength;
+                if (tracker.onProgress && tracker.totalBytes > 0) {
+                  tracker.onProgress(Math.min(99, Math.round(tracker.loadedBytes / tracker.totalBytes * 100)));
+                }
+                ctrl.enqueue(value);
+                pump();
+              }).catch(e => ctrl.error(e));
+            })();
+          }
+        }), { headers: res.headers, status: res.status, statusText: res.statusText });
+      });
+    };
+    GestureController._downloadTracker = tracker;
+    console.log('[gesture] 下载追踪器已安装');
+  }
+
+  static _removeTracker() {
+    if (GestureController._downloadTracker) {
+      window.fetch = GestureController._downloadTracker.orig;
+      GestureController._downloadTracker = null;
+      console.log('[gesture] 下载追踪器已移除');
+    }
+  }
 
   static preload() {
     if (GestureController._preloadPromise) return GestureController._preloadPromise;
@@ -27,7 +70,8 @@ export class GestureController {
         });
       }
 
-      // 2. 创建 Hands 实例
+      // 2. 安装下载追踪，创建 Hands 实例
+      GestureController._installTracker();
       const hands = new window.Hands({
         locateFile: (file) => `${MEDIAPIPE_CDN}/${file}`
       });
@@ -52,6 +96,7 @@ export class GestureController {
       console.log('[gesture] 预加载完成，模型已就绪');
     })().catch(err => {
       console.warn('[gesture] 预加载失败(可忽略):', err.message);
+      GestureController._removeTracker();
     });
 
     return GestureController._preloadPromise;
@@ -66,6 +111,7 @@ export class GestureController {
     this.onCameraReady = options.onCameraReady || (() => {});
     this.onCameraError = options.onCameraError || (() => {});
     this.onLoadingStatus = options.onLoadingStatus || (() => {});
+    this.onLoadingProgress = options.onLoadingProgress || (() => {});
 
     this.hands = null;
     this.camera = null;
@@ -110,9 +156,17 @@ export class GestureController {
         if (GestureController._preloadedHands) {
           // 模型已缓存，秒加载
           this.onLoadingStatus('正在加载手势模型...');
+          this.onLoadingProgress(100);
         } else {
-          // 首次加载，模型仍在下载
+          // 首次加载，模型仍在下载，接入实时进度
           this.onLoadingStatus('正在加载手势模型，首次需要较长时间...');
+          if (GestureController._downloadTracker) {
+            GestureController._downloadTracker.onProgress = (pct) => this.onLoadingProgress(pct);
+            const t = GestureController._downloadTracker;
+            if (t.totalBytes > 0) {
+              this.onLoadingProgress(Math.min(99, Math.round(t.loadedBytes / t.totalBytes * 100)));
+            }
+          }
         }
         await GestureController._preloadPromise;
       }
@@ -122,6 +176,7 @@ export class GestureController {
         this.hands = GestureController._preloadedHands;
         GestureController._preloadedHands = null;
         this.hands.onResults((results) => this.onResults(results));
+        GestureController._removeTracker();
 
         this.onLoadingStatus('正在启动摄像头...');
         await this.startCamera();
@@ -137,6 +192,10 @@ export class GestureController {
       await this.loadMediaPipe();
 
       this.onLoadingStatus('正在下载手势模型...');
+      GestureController._installTracker();
+      if (GestureController._downloadTracker) {
+        GestureController._downloadTracker.onProgress = (pct) => this.onLoadingProgress(pct);
+      }
       this.hands = new window.Hands({
         locateFile: (file) => `${MEDIAPIPE_CDN}/${file}`
       });
@@ -245,6 +304,8 @@ export class GestureController {
     if (!this._modelReady) {
       this._modelReady = true;
       clearTimeout(this._modelSlowTimer);
+      GestureController._removeTracker();
+      this.onLoadingProgress(100);
       if (this._modelReadyResolve) {
         this._modelReadyResolve();
         this._modelReadyResolve = null;

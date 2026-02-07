@@ -5,16 +5,16 @@
 console.log('[main] 应用启动');
 
 // 导入模块
-import { TarotScene } from './three-scene.js?v=50';
-import { StarRing } from './star-ring.js?v=50';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=50';
-import { GestureController } from './gesture.js?v=50';
-import { CardAnimator } from './card-animations.js?v=50';
-import { DebugControls } from './debug-controls.js?v=50';
-import { StorageService } from './storage.js?v=50';
-import { AIService } from './ai-service.js?v=50';
-import { MouseController, isTouchDevice } from './mouse-controller.js?v=50';
-import { CONFIG } from './config.js?v=50';
+import { TarotScene } from './three-scene.js?v=51';
+import { StarRing } from './star-ring.js?v=51';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=51';
+import { GestureController } from './gesture.js?v=51';
+import { CardAnimator } from './card-animations.js?v=51';
+import { DebugControls } from './debug-controls.js?v=51';
+import { StorageService } from './storage.js?v=51';
+import { AIService } from './ai-service.js?v=51';
+import { MouseController, isTouchDevice } from './mouse-controller.js?v=51';
+import { CONFIG } from './config.js?v=51';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -195,13 +195,9 @@ async function initScene() {
 }
 
 // 进度条状态映射
+// 非下载阶段的固定进度（下载阶段由实时字节数驱动）
 const LOADING_PROGRESS_MAP = {
-  '正在加载手势引擎...': 15,
-  '正在下载手势模型...': 30,
-  '正在加载手势模型...': 35,
-  '正在加载手势模型，首次需要较长时间...': 40,
-  '模型加载较慢，请耐心等待...': 60,
-  '正在启动摄像头...': 80,
+  '正在加载手势引擎...': 10,
 };
 
 function updateLoadingProgress(pct) {
@@ -226,6 +222,11 @@ async function initGesture() {
       fallbackTitle.textContent = status;
       const pct = LOADING_PROGRESS_MAP[status];
       if (pct) updateLoadingProgress(pct);
+    },
+    onLoadingProgress: (downloadPct) => {
+      // 将下载进度 0-100% 映射到整体进度 10-90%
+      const overall = 10 + Math.round(downloadPct * 0.8);
+      updateLoadingProgress(overall);
     },
     onCameraReady: () => {
       console.log('[main] 摄像头就绪');
