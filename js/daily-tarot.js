@@ -182,8 +182,16 @@ function playFlipAnimation(card) {
 // 渲染结果卡片
 // ============================================
 function renderResultCard(card, result, themeKey) {
-  // 设置主题
+  // 设置主题（inline style 确保 html2canvas 能正确读取 CSS 变量）
+  const theme = THEMES[themeKey];
   resultCard.setAttribute('data-theme', themeKey);
+  resultCard.style.setProperty('--dcr-bg1', theme.bg[0]);
+  resultCard.style.setProperty('--dcr-bg2', theme.bg[1]);
+  resultCard.style.setProperty('--dcr-rgb', theme.rgb);
+  resultCard.style.setProperty('--dcr-accent', theme.accent);
+  resultCard.style.setProperty('--dcr-card-bg1', theme.cardBg[0]);
+  resultCard.style.setProperty('--dcr-card-bg2', theme.cardBg[1]);
+  resultCard.style.setProperty('--dcr-text', theme.text);
 
   // 日期
   dcrDate.textContent = formatDate(new Date());
@@ -288,7 +296,7 @@ async function saveImage() {
 // ============================================
 async function copyMotto() {
   if (!currentMotto) return;
-  const text = `「${currentMotto}」\n— MYSTAR TAROT · intuitive-tarot.vercel.app`;
+  const text = `「${currentMotto}」\n— MYSTAR TAROT · tarot-project-bice.vercel.app`;
   try {
     await navigator.clipboard.writeText(text);
     const originalText = btnCopy.textContent;

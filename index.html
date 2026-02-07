@@ -2008,25 +2008,30 @@
     .dcr-yi-items { color: var(--dcr-accent); line-height: 1.6; }
     .dcr-ji-items { color: #a05050; line-height: 1.6; }
 
-    /* 灵魂拷问 */
+    /* 灵魂拷问 & 微仪式 区块 */
+    .dcr-section {
+      margin: 16px 0;
+      text-align: left;
+    }
+    .dcr-section-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      opacity: 0.5;
+      margin-bottom: 8px;
+    }
     .dcr-question {
-      font-style: italic;
+      font-family: "STKaiti", "KaiTi", "楷体", serif;
       font-size: 0.92rem;
       line-height: 1.7;
-      margin: 16px 0;
       padding: 10px 14px;
       border-left: 2px solid var(--dcr-accent);
-      text-align: left;
       opacity: 0.9;
     }
-
-    /* 微仪式 */
     .dcr-ritual {
       font-size: 0.85rem;
       line-height: 1.6;
-      margin: 10px 0;
       opacity: 0.7;
-      text-align: left;
     }
     .dcr-ritual::before {
       content: '- ';
@@ -3326,10 +3331,16 @@
       </div>
 
       <!-- 灵魂拷问 -->
-      <div class="dcr-question" id="dcr-question"></div>
+      <div class="dcr-section">
+        <div class="dcr-section-label">灵魂拷问</div>
+        <div class="dcr-question" id="dcr-question"></div>
+      </div>
 
       <!-- 微仪式 -->
-      <div class="dcr-ritual" id="dcr-ritual"></div>
+      <div class="dcr-section">
+        <div class="dcr-section-label">今日微仪式</div>
+        <div class="dcr-ritual" id="dcr-ritual"></div>
+      </div>
 
       <!-- 星际格言 -->
       <div class="dcr-motto-area">
@@ -3340,7 +3351,7 @@
 
       <!-- 底部 -->
       <div class="dcr-footer">
-        <div class="dcr-footer-brand">MYSTAR TAROT · intuitive-tarot.vercel.app</div>
+        <div class="dcr-footer-brand">MYSTAR TAROT · tarot-project-bice.vercel.app</div>
         <div class="dcr-footer-qr"></div>
       </div>
     </div>

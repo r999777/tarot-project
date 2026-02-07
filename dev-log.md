@@ -867,7 +867,7 @@ RING_ROTATION_FAST: 10000ms (加速时)
 ### 用法
 在 URL 后加 `?daily-debug` 即可无限测试每日一测：
 ```
-https://intuitive-tarot.vercel.app?daily-debug
+https://tarot-project-bice.vercel.app?daily-debug
 ```
 效果：跳过 localStorage 缓存 + 跳过服务端每日 1 次限制。
 
@@ -875,3 +875,20 @@ https://intuitive-tarot.vercel.app?daily-debug
 测试完毕后删除以下代码：
 1. **`js/daily-tarot.js`**：删除 `const DAILY_DEBUG = ...` 那 2 行，删除 `...(DAILY_DEBUG && { debug: true }),`，把 `DAILY_DEBUG ? null : getCachedResult()` 改回 `getCachedResult()`
 2. **`api/gemini.js`**：从解构中删除 `debug`，删除 `if (!debug) {` 包裹（恢复原来的直接检查）
+
+---
+
+## v1.5.2 更新 (2026-02-06)
+
+### 每日结果卡片优化
+1. **html2canvas 截图颜色修复**：在 `renderResultCard` 中用 `style.setProperty()` 将主题 CSS 变量设为 inline style，解决 html2canvas 无法解析 `[data-theme]` 属性选择器导致的色差问题
+2. **灵魂拷问 / 微仪式标签**：新增 `.dcr-section` 容器 + `.dcr-section-label`（样式同"今日频率"标签），分别显示"灵魂拷问"和"今日微仪式"
+3. **灵魂拷问字体**：`font-style: italic` → `font-family: "STKaiti", "KaiTi", "楷体", serif`（楷体）
+4. **URL 修正**：`intuitive-tarot.vercel.app` → `tarot-project-bice.vercel.app`（footer + 复制金句 + debug 文档）
+
+### 改动文件
+| 文件 | 改动 |
+|------|------|
+| `index.html` | 灵魂拷问/微仪式加标签 HTML + CSS，楷体字体 |
+| `js/daily-tarot.js` | inline CSS 变量修复截图色差 |
+| `dev-log.md` | 更新日志 + debug URL 修正 |
