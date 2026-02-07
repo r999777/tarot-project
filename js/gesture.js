@@ -107,7 +107,13 @@ export class GestureController {
 
       // 检查是否有预加载
       if (GestureController._preloadPromise) {
-        this.onLoadingStatus('正在加载手势模型，首次需要较长时间...');
+        if (GestureController._preloadedHands) {
+          // 模型已缓存，秒加载
+          this.onLoadingStatus('正在加载手势模型...');
+        } else {
+          // 首次加载，模型仍在下载
+          this.onLoadingStatus('正在加载手势模型，首次需要较长时间...');
+        }
         await GestureController._preloadPromise;
       }
 
