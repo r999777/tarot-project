@@ -101,6 +101,7 @@ export class GestureController {
     })().catch(err => {
       console.warn('[gesture] 预加载失败(可忽略):', err.message);
       GestureController._removeTracker();
+      GestureController._preloadPromise = null; // 重置，允许重试
     });
 
     return GestureController._preloadPromise;
@@ -255,13 +256,18 @@ export class GestureController {
 
   async startCamera() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        }
-      });
+      const stream = await Promise.race([
+        navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'user',
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          }
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('摄像头请求超时（30秒），请检查权限设置')), 30000)
+        )
+      ]);
 
       this.videoElement.srcObject = stream;
       await this.videoElement.play();
@@ -533,6 +539,15 @@ export class GestureController {
 
   stop() {
     this.isRunning = false;
+
+    // 如果 waitForModelReady() 正在等待，reject 防止调用方挂死
+    if (this._modelReadyResolve) {
+      this._modelReadyResolve = null;
+    }
+    if (this._modelSlowTimer) {
+      clearTimeout(this._modelSlowTimer);
+      this._modelSlowTimer = null;
+    }
 
     if (this.videoElement?.srcObject) {
       this.videoElement.srcObject.getTracks().forEach(track => track.stop());

@@ -4,17 +4,20 @@
 
 console.log('[main] 应用启动');
 
-// 导入模块
-import { TarotScene } from './three-scene.js?v=61';
-import { StarRing } from './star-ring.js?v=61';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=61';
-import { GestureController } from './gesture.js?v=61';
-import { CardAnimator } from './card-animations.js?v=61';
-import { DebugControls } from './debug-controls.js?v=61';
-import { StorageService } from './storage.js?v=61';
-import { AIService } from './ai-service.js?v=61';
-import { MouseController, isTouchDevice } from './mouse-controller.js?v=61';
-import { CONFIG } from './config.js?v=61';
+// 导入轻量模块（不依赖 Three.js，首屏即加载）
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=62';
+import { GestureController } from './gesture.js?v=62';
+import { StorageService } from './storage.js?v=62';
+import { AIService } from './ai-service.js?v=62';
+import { CONFIG } from './config.js?v=62';
+
+// Three.js 相关模块延迟加载（进入占卜页时动态 import）
+// TarotScene, StarRing, CardAnimator, DebugControls, MouseController
+
+// 内联触摸检测（避免引入 mouse-controller.js → Three.js 依赖链）
+function isTouchDevice() {
+  return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+}
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -168,9 +171,20 @@ async function initData() {
   }
 }
 
-// 初始化 3D 场景
+// 初始化 3D 场景（动态加载 Three.js 相关模块）
 async function initScene() {
   if (scene) return; // 已初始化
+
+  // 动态 import Three.js 相关模块（首屏不加载，进入占卜页才触发）
+  const [
+    { TarotScene },
+    { StarRing },
+    { CardAnimator },
+  ] = await Promise.all([
+    import('./three-scene.js?v=62'),
+    import('./star-ring.js?v=62'),
+    import('./card-animations.js?v=62'),
+  ]);
 
   const container = document.getElementById('canvas-container');
   scene = new TarotScene(container);
@@ -186,6 +200,7 @@ async function initScene() {
 
   // 调试模式：启用相机和卡槽调整
   if (DEBUG_MODE) {
+    const { DebugControls } = await import('./debug-controls.js?v=62');
     const debugControls = new DebugControls(scene.camera, scene.renderer, cardAnimator);
     scene.setDebugControls(debugControls);
     console.log('[main] 调试模式已启用');
@@ -534,16 +549,17 @@ function showGrabCancelHint() {
 
 // 启用鼠标模式
 // showHint: 是否显示操作提示（触摸设备会显示触摸专用提示，所以传 false）
-function enableMouseMode(showHint = true) {
+async function enableMouseMode(showHint = true) {
   isMouseMode = true;
   console.log('[main] 启用鼠标模式, scene:', !!scene, 'starRing:', !!starRing);
 
   // 隐藏手势引导
   gestureGuide.classList.remove('visible');
 
-  // 创建鼠标控制器
+  // 创建鼠标控制器（动态加载）
   if (!mouseController && scene && starRing) {
     console.log('[main] 创建鼠标控制器');
+    const { MouseController } = await import('./mouse-controller.js?v=62');
     mouseController = new MouseController({
       scene: scene,
       starRing: starRing,
@@ -841,6 +857,9 @@ function resetUI() {
 function showMainMenu() {
   readingPage.style.display = 'none';
   mainMenu.classList.remove('hidden');
+
+  // 停止进度条慢速递增定时器
+  stopSlowTick();
 
   // 停止手势识别
   if (gestureController) {
@@ -1950,6 +1969,7 @@ async function openFollowupDraw(count, reason) {
 
     // 设置鼠标控制器为追加模式（手势模式下也需要 mouseController 来操作浮层选牌）
     if (!mouseController && scene && starRing) {
+      const { MouseController } = await import('./mouse-controller.js?v=62');
       mouseController = new MouseController({
         scene: scene,
         starRing: starRing,
@@ -2158,5 +2178,15 @@ initData();
 
 // 初始化时检查 API 配置状态
 updateApiHintVisibility();
+
+// 隐藏全页加载遮罩
+const _loadingOverlay = document.getElementById('app-loading-overlay');
+if (_loadingOverlay) {
+  _loadingOverlay.style.opacity = '0';
+  setTimeout(() => _loadingOverlay.remove(), 400);
+}
+
+// 后台预加载 Three.js 相关模块（用户在主菜单停留时下载，进入占卜页时直接命中缓存）
+import('./three-scene.js?v=62');
 
 console.log('[main] 事件绑定完成');

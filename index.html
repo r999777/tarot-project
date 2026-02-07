@@ -2538,6 +2538,13 @@
       .reading-panel {
         bottom: 35px; /* 上移底部面板 */
       }
+      .camera-fallback {
+        min-width: 380px;
+        justify-content: center;
+      }
+      .loading-progress {
+        min-height: 42px;
+      }
     }
 
     /* ============================================ */
@@ -2596,6 +2603,25 @@
   </style>
 </head>
 <body>
+  <!-- 全页加载遮罩（纯 CSS，零 JS 依赖，浏览器解析 HTML 后立即可见） -->
+  <div id="app-loading-overlay" style="
+    position: fixed; inset: 0; z-index: 99999;
+    background: var(--bg-page, #FFFBF2);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    transition: opacity 0.4s ease;
+  ">
+    <div style="font-size: 2.5rem; margin-bottom: 16px; animation: pulse 2s ease-in-out infinite;">🌙</div>
+    <div style="
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem; color: #3D3354; letter-spacing: 2px;
+    ">Intuitive Tarot</div>
+    <div style="
+      margin-top: 12px; font-size: 0.85rem; color: #7A7289;
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+    ">正在加载...</div>
+  </div>
+
   <!-- 横竖屏方向提示 -->
   <div id="orientation-overlay">
     <div class="orient-card">
@@ -2940,6 +2966,6 @@
   }
   </script>
 
-  <script type="module" src="js/main.js?v=61"></script>
+  <script type="module" src="js/main.js?v=62"></script>
 </body>
 </html>
