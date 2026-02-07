@@ -1859,9 +1859,9 @@ function resultToHome() {
     .forEach(el => el.remove());
 }
 
-// 保存结果页为图片
+// 保存结果页为图片（dom-to-image）
 async function saveAsImage() {
-  if (typeof html2canvas === 'undefined') {
+  if (typeof domtoimage === 'undefined') {
     alert('图片组件尚未加载完成，请稍后再试');
     return;
   }
@@ -1890,15 +1890,8 @@ async function saveAsImage() {
     const scrollTop = resultPage.scrollTop;
     resultPage.scrollTop = 0;
 
-    // html2canvas 渲染
-    const canvas = await html2canvas(resultPage, {
-      backgroundColor: '#1a1a2e',
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      scrollY: 0,
-      windowHeight: resultPage.scrollHeight,
-    });
+    // dom-to-image 渲染
+    const dataUrl = await domtoimage.toPng(resultPage, { scale: 2 });
 
     // 恢复
     resultPage.scrollTop = scrollTop;
@@ -1906,42 +1899,38 @@ async function saveAsImage() {
     footer.style.display = footerDisplay;
     if (backBtn) backBtn.style.display = backDisplay;
 
-    // 底部追加水印
-    const ctx = canvas.getContext('2d');
-    ctx.font = '24px serif';
-    ctx.fillStyle = 'rgba(201, 169, 98, 0.5)';
-    ctx.textAlign = 'center';
-    ctx.fillText('Intuitive Tarot ✦ 星际塔罗师', canvas.width / 2, canvas.height - 20);
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 768);
 
-    // 导出
-    canvas.toBlob(blob => {
-      if (!blob) {
-        console.error('[main] toBlob 返回 null');
-        btnSaveImage.disabled = false;
-        btnSaveImage.textContent = originalLabel;
-        return;
-      }
-      const file = new File([blob], 'tarot-reading.png', { type: 'image/png' });
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 768);
+    if (isMobile) {
+      // 手机端：弹出图片，长按保存
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `
+        position:fixed; inset:0; z-index:9999;
+        background:rgba(0,0,0,0.85);
+        display:flex; flex-direction:column;
+        align-items:center; justify-content:center;
+        padding:20px; gap:16px;
+      `;
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      img.style.cssText = 'max-width:85%; max-height:70vh; border-radius:12px;';
+      const tip = document.createElement('div');
+      tip.textContent = '长按图片保存到相册';
+      tip.style.cssText = 'color:#f5e6c4; font-size:14px; letter-spacing:1px;';
+      overlay.appendChild(img);
+      overlay.appendChild(tip);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+      document.body.appendChild(overlay);
+    } else {
+      // 电脑端：直接下载
+      const link = document.createElement('a');
+      link.download = '星际塔罗-解读结果.png';
+      link.href = dataUrl;
+      link.click();
+    }
 
-      if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file] }).catch(() => {});
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'tarot-reading.png';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, 500);
-      }
-      btnSaveImage.disabled = false;
-      btnSaveImage.textContent = originalLabel;
-    }, 'image/png');
+    btnSaveImage.disabled = false;
+    btnSaveImage.textContent = originalLabel;
   } catch (err) {
     console.error('[main] 保存图片失败:', err);
     alert('保存图片失败: ' + err.message);

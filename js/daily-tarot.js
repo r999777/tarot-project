@@ -11,15 +11,6 @@ console.log('[daily-tarot] 模块加载');
 const DAILY_DEBUG = new URLSearchParams(window.location.search).has('daily-debug');
 if (DAILY_DEBUG) console.log('[daily-tarot] DEBUG 模式');
 
-// 5 套主题色（根据花色自动切换）
-const THEMES = {
-  fire:  { bg: ['#faf7f0','#f5ede0'], rgb: '120,90,40', accent: '#8a7030', cardBg: ['#4a2a1a','#2a1508'], text: '#3a3020' },
-  water: { bg: ['#f2f8f6','#e8f3ef'], rgb: '60,100,80', accent: '#3a7a5a', cardBg: ['#1a3d30','#0f2a20'], text: '#2a4a3a' },
-  air:   { bg: ['#f5f2f8','#ece6f3'], rgb: '100,70,140', accent: '#6a4a9a', cardBg: ['#3a2860','#251845'], text: '#3a2a55' },
-  earth: { bg: ['#faf7f0','#f2eadb'], rgb: '130,100,50', accent: '#7a6428', cardBg: ['#3a3018','#22200e'], text: '#3a3520' },
-  major: { bg: ['#0f0e1a','#161224'], rgb: '212,175,55', accent: '#d4af37', cardBg: ['#2a1f4e','#1a1235'], text: '#f5e6c4' },
-};
-
 // DOM 引用
 const mainMenu = document.getElementById('main-menu');
 const dailyPage = document.getElementById('daily-page');
@@ -182,16 +173,8 @@ function playFlipAnimation(card) {
 // 渲染结果卡片
 // ============================================
 function renderResultCard(card, result, themeKey) {
-  // 设置主题（inline style 确保 html2canvas 能正确读取 CSS 变量）
-  const theme = THEMES[themeKey];
+  // 设置主题
   resultCard.setAttribute('data-theme', themeKey);
-  resultCard.style.setProperty('--dcr-bg1', theme.bg[0]);
-  resultCard.style.setProperty('--dcr-bg2', theme.bg[1]);
-  resultCard.style.setProperty('--dcr-rgb', theme.rgb);
-  resultCard.style.setProperty('--dcr-accent', theme.accent);
-  resultCard.style.setProperty('--dcr-card-bg1', theme.cardBg[0]);
-  resultCard.style.setProperty('--dcr-card-bg2', theme.cardBg[1]);
-  resultCard.style.setProperty('--dcr-text', theme.text);
 
   // 日期
   dcrDate.textContent = formatDate(new Date());
@@ -229,47 +212,10 @@ function renderResultCard(card, result, themeKey) {
 }
 
 // ============================================
-// 生成截图用的主题覆盖 CSS（html2canvas 不解析 var()）
-// ============================================
-function buildThemeCSS(theme) {
-  const r = theme.rgb;
-  const a = theme.accent;
-  return `
-    .daily-result-card {
-      background: linear-gradient(160deg, ${theme.bg[0]}, ${theme.bg[1]}) !important;
-      color: ${theme.text} !important;
-    }
-    .daily-result-card::before {
-      background: linear-gradient(135deg, rgba(${r},0.6), rgba(${r},0.1)) !important;
-    }
-    .daily-result-card::after {
-      background:
-        radial-gradient(1px 1px at 15% 20%, rgba(${r},0.4), transparent),
-        radial-gradient(1px 1px at 85% 15%, rgba(${r},0.3), transparent),
-        radial-gradient(1px 1px at 40% 80%, rgba(${r},0.2), transparent),
-        radial-gradient(1px 1px at 70% 60%, rgba(${r},0.3), transparent),
-        radial-gradient(1px 1px at 25% 55%, rgba(${r},0.2), transparent),
-        radial-gradient(1px 1px at 90% 85%, rgba(${r},0.15), transparent) !important;
-    }
-    .dcr-tag { border-color: rgba(${r},0.4) !important; }
-    .dcr-divider { background: linear-gradient(90deg, transparent, rgba(${r},0.3), transparent) !important; }
-    .dcr-card-img-wrap { background: linear-gradient(135deg, ${theme.cardBg[0]}, ${theme.cardBg[1]}) !important; }
-    .dcr-freq-words { color: ${a} !important; }
-    .dcr-yi { background: rgba(${r},0.08) !important; }
-    .dcr-yi-label, .dcr-yi-items { color: ${a} !important; }
-    .dcr-question { border-left-color: ${a} !important; }
-    .dcr-motto-divider { background: linear-gradient(90deg, transparent, rgba(${r},0.25), transparent) !important; }
-    .dcr-motto { color: ${a} !important; }
-    .dcr-footer { border-top-color: rgba(${r},0.1) !important; }
-    .dcr-footer-qr { border-color: rgba(${r},0.15) !important; }
-  `;
-}
-
-// ============================================
-// 保存图片
+// 保存图片（dom-to-image，原生支持 CSS 变量）
 // ============================================
 async function saveImage() {
-  if (typeof html2canvas === 'undefined') {
+  if (typeof domtoimage === 'undefined') {
     alert('图片组件尚未加载完成，请稍后再试');
     return;
   }
@@ -278,56 +224,40 @@ async function saveImage() {
   btnSave.disabled = true;
   btnSave.textContent = '生成中...';
 
-  const themeKey = resultCard.getAttribute('data-theme');
-  const theme = THEMES[themeKey] || THEMES.major;
-
   try {
-    const canvas = await html2canvas(resultCard, {
-      backgroundColor: null,
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      onclone: (clonedDoc) => {
-        const style = clonedDoc.createElement('style');
-        style.textContent = buildThemeCSS(theme);
-        clonedDoc.head.appendChild(style);
-      },
-    });
+    const dataUrl = await domtoimage.toPng(resultCard, { scale: 2 });
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 768);
 
-    canvas.toBlob(async (blob) => {
-      if (!blob) {
-        alert('图片生成失败，请重试');
-        btnSave.disabled = false;
-        btnSave.textContent = originalText;
-        return;
-      }
+    if (isMobile) {
+      // 手机端：弹出图片，长按保存
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `
+        position:fixed; inset:0; z-index:9999;
+        background:rgba(0,0,0,0.85);
+        display:flex; flex-direction:column;
+        align-items:center; justify-content:center;
+        padding:20px; gap:16px;
+      `;
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      img.style.cssText = 'max-width:85%; max-height:70vh; border-radius:12px;';
+      const tip = document.createElement('div');
+      tip.textContent = '长按图片保存到相册';
+      tip.style.cssText = 'color:#f5e6c4; font-size:14px; letter-spacing:1px;';
+      overlay.appendChild(img);
+      overlay.appendChild(tip);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+      document.body.appendChild(overlay);
+    } else {
+      // 电脑端：直接下载
+      const link = document.createElement('a');
+      link.download = '星际塔罗-每日气象.png';
+      link.href = dataUrl;
+      link.click();
+    }
 
-      const file = new File([blob], 'daily-tarot.png', { type: 'image/png' });
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 768);
-
-      if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file] });
-        } catch {
-          // 用户取消分享，不报错
-        }
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'daily-tarot.png';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, 500);
-      }
-
-      btnSave.disabled = false;
-      btnSave.textContent = originalText;
-    }, 'image/png');
+    btnSave.disabled = false;
+    btnSave.textContent = originalText;
   } catch (err) {
     console.error('[daily-tarot] 截图失败:', err);
     alert('保存图片失败，请重试');
