@@ -2,8 +2,8 @@
 // 每日一测 — 独立模块
 // ============================================
 
-import { CONFIG } from './config.js?v=71';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=71';
+import { CONFIG } from './config.js?v=74';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=74';
 
 console.log('[daily-tarot] 模块加载');
 
@@ -33,6 +33,11 @@ const dcrQuestion = document.getElementById('dcr-question');
 const dcrRitual = document.getElementById('dcr-ritual');
 const dcrMotto = document.getElementById('dcr-motto');
 
+const dcrLuckyColorBlock = document.getElementById('dcr-lucky-color-block');
+const dcrLuckyColorName = document.getElementById('dcr-lucky-color-name');
+const dcrLuckyAction = document.getElementById('dcr-lucky-action');
+const dcrLuckyNumber = document.getElementById('dcr-lucky-number');
+
 const dailyActions = document.getElementById('daily-actions');
 const btnSave = document.getElementById('daily-save-btn');
 const btnCopy = document.getElementById('daily-copy-btn');
@@ -61,7 +66,8 @@ function formatDate(date) {
 }
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 // ============================================
@@ -109,7 +115,7 @@ async function callDailyAPI(card) {
       systemInstruction: { parts: [{ text: CONFIG.SYSTEM_PROMPT_DAILY }] },
       generationConfig: {
         temperature: 0.9,
-        maxOutputTokens: 800,
+        maxOutputTokens: 1000,
         responseMimeType: 'application/json',
       },
     }),
@@ -147,8 +153,17 @@ async function callDailyAPI(card) {
     }
   }
 
-  // 解析 JSON 结果
-  return JSON.parse(fullText);
+  // 清洗：去掉 markdown 代码块标记和首尾空白
+  let cleaned = fullText.trim();
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+  }
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error('[daily-tarot] JSON 解析失败, fullText:', fullText);
+    throw new Error('AI 返回格式异常');
+  }
 }
 
 // ============================================
@@ -186,6 +201,19 @@ function renderResultCard(card, result, themeKey) {
   // 频率
   const freqArr = Array.isArray(result.frequency) ? result.frequency : [];
   dcrFreqWords.textContent = freqArr.join(' · ');
+
+  // 幸运色/数字/行动（先清除上次残留）
+  resultCard.style.removeProperty('--dcr-lucky-color');
+  const luckyColor = result.lucky_color;
+  const luckyHex = luckyColor?.hex || null;
+  if (luckyHex) {
+    resultCard.style.setProperty('--dcr-lucky-color', luckyHex);
+  }
+  dcrLuckyColorBlock.style.background = luckyHex || '';
+  dcrLuckyColorBlock.style.boxShadow = luckyHex ? `0 0 12px ${luckyHex}40` : '';
+  dcrLuckyColorName.textContent = luckyColor?.name || '';
+  dcrLuckyAction.textContent = result.lucky_action || '';
+  dcrLuckyNumber.textContent = result.lucky_number ?? '';
 
   // 宜忌
   const yiArr = Array.isArray(result.yi) ? result.yi : [];
@@ -234,7 +262,7 @@ async function saveImage() {
     resultCard.style.overflow = 'visible';
 
     const blob = await window.domtoimage.toBlob(resultCard, {
-      scale: isMobile ? 1 : 2,
+      scale: 2,
       width: resultCard.scrollWidth,
       height: resultCard.scrollHeight,
     });
@@ -329,12 +357,19 @@ function resetPage() {
 // 显示每日页面（主入口）
 // ============================================
 async function showDailyPage() {
-  // 确保牌数据已加载
-  await loadTarotData();
-
   mainMenu.classList.add('hidden');
   resetPage();
   dailyPage.style.display = 'flex';
+
+  // 确保牌数据已加载
+  try {
+    await loadTarotData();
+  } catch (err) {
+    console.error('[daily-tarot] 牌数据加载失败:', err);
+    dailyLoading.style.display = 'flex';
+    dailyLoading.querySelector('.loading-text').textContent = '牌数据加载失败，请检查网络后刷新';
+    return;
+  }
 
   // 检查缓存（debug 模式跳过）
   const cached = DAILY_DEBUG ? null : getCachedResult();

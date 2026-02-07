@@ -161,11 +161,6 @@ export default async function handler(req) {
         });
       }
     }
-    // 标记已用，TTL 到当天结束（最多 24 小时）
-    const now = new Date();
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    const ttl = Math.ceil((endOfDay - now) / 1000);
-    await redis.set(dailyKey, 1, { ex: ttl });
 
     const url = `${GEMINI_BASE}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
     const geminiRes = await fetch(url, {
@@ -175,11 +170,23 @@ export default async function handler(req) {
     });
 
     if (!geminiRes.ok) {
+      // Gemini 失败 → 不标记已用，用户可重试
       const errorText = await geminiRes.text();
       return new Response(errorText, {
         status: geminiRes.status,
         headers: { 'Content-Type': 'application/json' },
       });
+    }
+
+    // Gemini 成功 → 才标记已用，TTL 到北京时间当天结束
+    if (!debug) {
+      const now = new Date();
+      const bjMs = now.getTime() + 8 * 3600000;
+      const bjDate = new Date(bjMs);
+      const bjMidnightMs = Date.UTC(bjDate.getUTCFullYear(), bjDate.getUTCMonth(), bjDate.getUTCDate() + 1);
+      const endOfDayUtc = bjMidnightMs - 8 * 3600000;
+      const ttl = Math.ceil((endOfDayUtc - now.getTime()) / 1000);
+      await redis.set(dailyKey, 1, { ex: ttl });
     }
 
     return new Response(geminiRes.body, {

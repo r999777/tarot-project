@@ -1830,10 +1830,10 @@
       --dcr-card-bg1: #2a1f4e;
       --dcr-card-bg2: #1a1235;
       --dcr-text: #f5e6c4;
-      width: 380px;
+      width: 340px;
       max-width: 100%;
-      border-radius: 20px;
-      padding: 24px 22px 20px;
+      border-radius: 18px;
+      padding: 18px 16px 14px;
       position: relative;
       overflow: hidden;
       background: linear-gradient(160deg, var(--dcr-bg1), var(--dcr-bg2));
@@ -1845,9 +1845,9 @@
       content: '';
       position: absolute;
       inset: 0;
-      border-radius: 20px;
+      border-radius: 18px;
       padding: 1px;
-      background: linear-gradient(135deg, rgba(var(--dcr-rgb),0.6), rgba(var(--dcr-rgb),0.1));
+      background: linear-gradient(135deg, var(--dcr-lucky-color, rgba(var(--dcr-rgb),0.6)), rgba(var(--dcr-rgb),0.1));
       -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
       mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
       -webkit-mask-composite: xor;
@@ -1859,7 +1859,7 @@
       content: '';
       position: absolute;
       inset: 0;
-      border-radius: 20px;
+      border-radius: 18px;
       background:
         radial-gradient(1px 1px at 15% 20%, rgba(var(--dcr-rgb),0.4), transparent),
         radial-gradient(1px 1px at 85% 15%, rgba(var(--dcr-rgb),0.3), transparent),
@@ -1907,7 +1907,7 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
     .dcr-brand {
       font-family: var(--font-title);
@@ -1932,21 +1932,21 @@
     .dcr-divider {
       height: 1px;
       background: linear-gradient(90deg, transparent, rgba(var(--dcr-rgb), 0.3), transparent);
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
 
     /* 主体：牌面 + 频率 */
     .dcr-main {
       display: flex;
-      gap: 16px;
+      gap: 14px;
       align-items: center;
-      margin-bottom: 18px;
+      margin-bottom: 12px;
     }
     .dcr-card-img-wrap {
       flex-shrink: 0;
-      width: 110px;
-      height: 183px;
-      border-radius: 10px;
+      width: 90px;
+      height: 150px;
+      border-radius: 8px;
       overflow: hidden;
       background: linear-gradient(135deg, var(--dcr-card-bg1), var(--dcr-card-bg2));
       box-shadow: 0 4px 20px rgba(0,0,0,0.3);
@@ -1981,7 +1981,7 @@
     .dcr-yiji {
       display: flex;
       gap: 0;
-      margin: 16px 0;
+      margin: 10px 0;
       border-radius: 10px;
       overflow: hidden;
       font-size: 0.88rem;
@@ -1992,6 +1992,7 @@
     }
     .dcr-yi {
       background: rgba(var(--dcr-rgb), 0.08);
+      border-left: 2px solid var(--dcr-lucky-color, var(--dcr-accent));
     }
     .dcr-ji {
       background: rgba(120, 40, 40, 0.08);
@@ -2008,9 +2009,68 @@
     .dcr-yi-items { color: var(--dcr-accent); line-height: 1.6; }
     .dcr-ji-items { color: #a05050; line-height: 1.6; }
 
+    /* 幸运条 */
+    .dcr-lucky-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0;
+      padding: 10px 12px;
+      background: rgba(var(--dcr-rgb), 0.06);
+      border-radius: 10px;
+      border: 1px solid rgba(var(--dcr-rgb), 0.12);
+    }
+    .dcr-lucky-color-block {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      box-shadow: 0 0 12px var(--dcr-lucky-color, var(--dcr-accent));
+      background: var(--dcr-lucky-color, var(--dcr-accent));
+    }
+    .dcr-lucky-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .dcr-lucky-label {
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+      opacity: 0.5;
+      margin-bottom: 2px;
+    }
+    .dcr-lucky-text {
+      font-size: 0.82rem;
+      line-height: 1.4;
+    }
+    .dcr-lucky-color-name {
+      font-weight: 600;
+      color: var(--dcr-lucky-color, var(--dcr-accent));
+    }
+    .dcr-lucky-action {
+      opacity: 0.7;
+    }
+    .dcr-lucky-action::before {
+      content: ' · ';
+    }
+    .dcr-lucky-number {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: rgba(var(--dcr-rgb), 0.1);
+      border: 1px solid rgba(var(--dcr-rgb), 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-family: var(--font-title);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--dcr-accent);
+    }
+
     /* 灵魂拷问 & 微仪式 区块 */
     .dcr-section {
-      margin: 16px 0;
+      margin: 10px 0;
       text-align: left;
     }
     .dcr-section-label {
@@ -2039,7 +2099,7 @@
 
     /* 星际格言 */
     .dcr-motto-area {
-      margin-top: 18px;
+      margin-top: 12px;
       text-align: center;
     }
     .dcr-motto-divider {
@@ -2060,8 +2120,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-top: 16px;
-      padding-top: 10px;
+      margin-top: 10px;
+      padding-top: 8px;
       border-top: 1px solid rgba(var(--dcr-rgb), 0.1);
     }
     .dcr-footer-brand {
@@ -3263,7 +3323,7 @@
 
     <!-- 底部追问区域 -->
     <div class="result-footer">
-      <button class="save-image-btn" id="btn-save-image">↓ 保存图片</button>
+      <button class="save-image-btn" id="btn-save-image">保存图片</button>
       <div class="followup-input-wrapper">
         <input type="text" class="followup-input" id="followup-input" placeholder="还有什么想问的？">
         <button class="followup-btn" id="btn-followup" disabled>发送</button>
@@ -3316,6 +3376,19 @@
           <div class="dcr-freq-label">今日频率</div>
           <div class="dcr-freq-words" id="dcr-freq-words"></div>
         </div>
+      </div>
+
+      <!-- 今日幸运 -->
+      <div class="dcr-lucky-strip" id="dcr-lucky-strip">
+        <div class="dcr-lucky-color-block" id="dcr-lucky-color-block"></div>
+        <div class="dcr-lucky-info">
+          <div class="dcr-lucky-label">今日幸运</div>
+          <div class="dcr-lucky-text">
+            <span class="dcr-lucky-color-name" id="dcr-lucky-color-name"></span>
+            <span class="dcr-lucky-action" id="dcr-lucky-action"></span>
+          </div>
+        </div>
+        <div class="dcr-lucky-number" id="dcr-lucky-number"></div>
       </div>
 
       <!-- 宜忌 -->
@@ -3450,7 +3523,7 @@
   <!-- Markdown 渲染库 -->
   <script src="vendor/marked.min.js"></script>
   <!-- 截图库（保存对话为图片） -->
-  <script src="vendor/dom-to-image-more.min.js?v=71"></script>
+  <script src="vendor/dom-to-image-more.min.js?v=74"></script>
   <script>
     // 确保 domtoimage 全局可用
     if (typeof window.domtoimage === 'undefined') {
@@ -3475,8 +3548,8 @@
   }
   </script>
 
-  <script type="module" src="js/main.js?v=71"></script>
-  <script type="module" src="js/daily-tarot.js?v=72"></script>
+  <script type="module" src="js/main.js?v=74"></script>
+  <script type="module" src="js/daily-tarot.js?v=74"></script>
   <script>
     // 安全网：如果 main.js 10 秒内没加载完，自动隐藏遮罩防止卡死
     setTimeout(function() {

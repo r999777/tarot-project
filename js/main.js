@@ -5,11 +5,11 @@
 console.log('[main] 应用启动');
 
 // 导入轻量模块（不依赖 Three.js，首屏即加载）
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=71';
-import { GestureController } from './gesture.js?v=71';
-import { StorageService } from './storage.js?v=71';
-import { AIService } from './ai-service.js?v=71';
-import { CONFIG } from './config.js?v=71';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=74';
+import { GestureController } from './gesture.js?v=74';
+import { StorageService } from './storage.js?v=74';
+import { AIService } from './ai-service.js?v=74';
+import { CONFIG } from './config.js?v=74';
 
 // Three.js 相关模块延迟加载（进入占卜页时动态 import）
 // TarotScene, StarRing, CardAnimator, DebugControls, MouseController
@@ -183,9 +183,9 @@ async function initScene() {
     { StarRing },
     { CardAnimator },
   ] = await Promise.all([
-    import('./three-scene.js?v=71'),
-    import('./star-ring.js?v=71'),
-    import('./card-animations.js?v=71'),
+    import('./three-scene.js?v=74'),
+    import('./star-ring.js?v=74'),
+    import('./card-animations.js?v=74'),
   ]);
 
   const container = document.getElementById('canvas-container');
@@ -202,7 +202,7 @@ async function initScene() {
 
   // 调试模式：启用相机和卡槽调整
   if (DEBUG_MODE) {
-    const { DebugControls } = await import('./debug-controls.js?v=71');
+    const { DebugControls } = await import('./debug-controls.js?v=74');
     const debugControls = new DebugControls(scene.camera, scene.renderer, cardAnimator);
     scene.setDebugControls(debugControls);
     console.log('[main] 调试模式已启用');
@@ -561,7 +561,7 @@ async function enableMouseMode(showHint = true) {
   // 创建鼠标控制器（动态加载）
   if (!mouseController && scene && starRing) {
     console.log('[main] 创建鼠标控制器');
-    const { MouseController } = await import('./mouse-controller.js?v=71');
+    const { MouseController } = await import('./mouse-controller.js?v=74');
     mouseController = new MouseController({
       scene: scene,
       starRing: starRing,
@@ -1890,17 +1890,32 @@ async function saveAsImage() {
     const scrollTop = resultPage.scrollTop;
     resultPage.scrollTop = 0;
 
-    // dom-to-image 渲染
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 768);
-    const blob = await window.domtoimage.toBlob(resultPage, { scale: isMobile ? 1 : 2 });
+    // 临时修改 resultPage 为 block 布局（避免 flex + min-height:100vh 导致截图不完整）
+    const origPageStyle = resultPage.style.cssText;
+    resultPage.style.display = 'block';
+    resultPage.style.minHeight = 'auto';
+    resultPage.style.overflow = 'visible';
+    resultPage.style.height = 'auto';
+
+    // 等待重排
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    // dom-to-image 渲染（使用显式尺寸）
+    const blob = await window.domtoimage.toBlob(resultPage, {
+      scale: 2,
+      width: resultPage.scrollWidth,
+      height: resultPage.scrollHeight,
+    });
     const blobUrl = URL.createObjectURL(blob);
 
-    // 恢复
+    // 恢复所有样式
+    resultPage.style.cssText = origPageStyle;
     resultPage.scrollTop = scrollTop;
     content.style.cssText = originalStyle;
     footer.style.display = footerDisplay;
     if (backBtn) backBtn.style.display = backDisplay;
 
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 768);
     if (isMobile) {
       // 手机端：弹出图片，长按保存
       const overlay = document.createElement('div');
@@ -1919,7 +1934,6 @@ async function saveAsImage() {
       overlay.appendChild(img);
       overlay.appendChild(tip);
       overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.remove(); URL.revokeObjectURL(blobUrl); } });
-      // 等图片加载完再显示
       img.onload = () => document.body.appendChild(overlay);
       img.onerror = () => { URL.revokeObjectURL(blobUrl); alert('图片加载失败，请重试'); };
       img.src = blobUrl;
@@ -2078,7 +2092,7 @@ async function openFollowupDraw(count, reason) {
 
     // 设置鼠标控制器为追加模式（手势模式下也需要 mouseController 来操作浮层选牌）
     if (!mouseController && scene && starRing) {
-      const { MouseController } = await import('./mouse-controller.js?v=71');
+      const { MouseController } = await import('./mouse-controller.js?v=74');
       mouseController = new MouseController({
         scene: scene,
         starRing: starRing,
@@ -2297,7 +2311,7 @@ if (_loadingOverlay) {
 
 // 后台预加载 Three.js 相关模块（延迟 2 秒，避免和关键资源抢带宽）
 setTimeout(() => {
-  import('./three-scene.js?v=71').catch(() => {});
+  import('./three-scene.js?v=74').catch(() => {});
 }, 2000);
 
 console.log('[main] 事件绑定完成');
