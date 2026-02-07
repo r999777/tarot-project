@@ -136,6 +136,8 @@ export class GestureController {
     try {
       // 如果已初始化过，只需重新启动摄像头
       if (this.hands) {
+        this.onLoadingStatus('正在启动摄像头...');
+
         // 创建新的 video 元素
         this.videoElement = document.createElement('video');
         this.videoElement.style.display = 'none';

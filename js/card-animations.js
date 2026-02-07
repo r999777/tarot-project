@@ -3,7 +3,7 @@
 // ============================================
 
 import * as THREE from 'three';
-import { CONFIG } from './config.js?v=58';
+import { CONFIG } from './config.js?v=59';
 
 export class CardAnimator {
   constructor(scene, camera) {
