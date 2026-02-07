@@ -61,7 +61,7 @@ export class GestureController {
 
       this.hands.setOptions({
         maxNumHands: 1,
-        modelComplexity: 1,
+        modelComplexity: 0,
         minDetectionConfidence: 0.7,
         minTrackingConfidence: 0.5
       });
