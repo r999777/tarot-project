@@ -2,7 +2,7 @@
 // AI Service - Claude/Gemini API 调用
 // ============================================
 
-import { CONFIG } from './config.js?v=62';
+import { CONFIG } from './config.js?v=63';
 
 export class AIService {
   constructor() {
@@ -124,12 +124,13 @@ export class AIService {
     const data = await response.json();
     const result = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toUpperCase();
 
-    // 映射 AI 返回的 A/B/C/D 到内部类型
+    // 映射 AI 返回的 A/B/C/D/E 到内部类型
     switch (result) {
       case 'A': return 'direct';
       case 'B': return 'fortune';
       case 'C': return 'analysis';
       case 'D': return 'invalid';
+      case 'E': return 'crisis';
       default:
         console.warn('[AI 分类器] 返回异常:', result, '回退到关键词匹配');
         return this.getQuestionType(question);
@@ -411,6 +412,12 @@ export class AIService {
       const questionType = await this.classifyQuestionWithAI(question);
       console.log('[AI] 分类结果:', questionType);
 
+      // 高危拦截：直接返回心理援助信息
+      if (questionType === 'crisis') {
+        onChunk(CONFIG.CRISIS_MESSAGE);
+        return;
+      }
+
       // 无效输入：直接返回引导消息（不作为错误）
       if (questionType === 'invalid') {
         onChunk(CONFIG.INVALID_INPUT_MESSAGE);
@@ -599,7 +606,7 @@ export class AIService {
       const result = JSON.parse(cleaned);
 
       // 映射 type 字母到内部类型
-      const typeMap = { A: 'direct', B: 'fortune', C: 'analysis', D: 'invalid' };
+      const typeMap = { A: 'direct', B: 'fortune', C: 'analysis', D: 'invalid', E: 'crisis' };
       const type = typeMap[result.type?.toUpperCase()] || 'analysis';
       const cards = Math.max(0, Math.min(3, result.cards ?? 0));
 
@@ -617,7 +624,7 @@ export class AIService {
     const template = CONFIG.getMainTemplate(questionType || 'analysis');
     const now = new Date();
     const currentDateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
-    const systemPrompt = template.replace('{current_date}', currentDateStr) + CONFIG.FOLLOWUP_RULES + CONFIG.FOLLOWUP_CARD_CONTEXT;
+    const systemPrompt = template.replace('{current_date}', currentDateStr) + CONFIG.FOLLOWUP_RULES + CONFIG.getFollowupCardContext(newCards.length);
 
     // 构建追加牌面描述
     let cardInfo = '# 追加抽取的补充牌面\n\n';

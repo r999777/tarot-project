@@ -5,11 +5,11 @@
 console.log('[main] 应用启动');
 
 // 导入轻量模块（不依赖 Three.js，首屏即加载）
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=62';
-import { GestureController } from './gesture.js?v=62';
-import { StorageService } from './storage.js?v=62';
-import { AIService } from './ai-service.js?v=62';
-import { CONFIG } from './config.js?v=62';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=63';
+import { GestureController } from './gesture.js?v=63';
+import { StorageService } from './storage.js?v=63';
+import { AIService } from './ai-service.js?v=63';
+import { CONFIG } from './config.js?v=63';
 
 // Three.js 相关模块延迟加载（进入占卜页时动态 import）
 // TarotScene, StarRing, CardAnimator, DebugControls, MouseController
@@ -181,9 +181,9 @@ async function initScene() {
     { StarRing },
     { CardAnimator },
   ] = await Promise.all([
-    import('./three-scene.js?v=62'),
-    import('./star-ring.js?v=62'),
-    import('./card-animations.js?v=62'),
+    import('./three-scene.js?v=63'),
+    import('./star-ring.js?v=63'),
+    import('./card-animations.js?v=63'),
   ]);
 
   const container = document.getElementById('canvas-container');
@@ -200,7 +200,7 @@ async function initScene() {
 
   // 调试模式：启用相机和卡槽调整
   if (DEBUG_MODE) {
-    const { DebugControls } = await import('./debug-controls.js?v=62');
+    const { DebugControls } = await import('./debug-controls.js?v=63');
     const debugControls = new DebugControls(scene.camera, scene.renderer, cardAnimator);
     scene.setDebugControls(debugControls);
     console.log('[main] 调试模式已启用');
@@ -559,7 +559,7 @@ async function enableMouseMode(showHint = true) {
   // 创建鼠标控制器（动态加载）
   if (!mouseController && scene && starRing) {
     console.log('[main] 创建鼠标控制器');
-    const { MouseController } = await import('./mouse-controller.js?v=62');
+    const { MouseController } = await import('./mouse-controller.js?v=63');
     mouseController = new MouseController({
       scene: scene,
       starRing: starRing,
@@ -1597,6 +1597,21 @@ async function callAIReading(followupQuestion = null) {
       const classifyResult = await aiService.classifyFollowupIntent(followupQuestion, cardSummary);
       followupQuestionType = classifyResult.type;
 
+      // 高危拦截 → 显示心理援助信息
+      if (classifyResult.type === 'crisis') {
+        loadingEl.remove();
+        answerEl = document.createElement('div');
+        answerEl.className = 'followup-answer';
+        answerEl.innerHTML = marked.parse(CONFIG.CRISIS_MESSAGE);
+        resultContent.appendChild(answerEl);
+        resultContent.scrollTop = resultContent.scrollHeight;
+        followupInput.disabled = false;
+        const followupCount = (conversationHistory.length / 2) - 1;
+        followupInput.placeholder = `还可追问 ${3 - followupCount} 次`;
+        btnFollowup.disabled = followupInput.value.trim().length === 0;
+        return;
+      }
+
       // 无效输入 → 显示引导消息
       if (classifyResult.type === 'invalid') {
         loadingEl.remove();
@@ -1969,7 +1984,7 @@ async function openFollowupDraw(count, reason) {
 
     // 设置鼠标控制器为追加模式（手势模式下也需要 mouseController 来操作浮层选牌）
     if (!mouseController && scene && starRing) {
-      const { MouseController } = await import('./mouse-controller.js?v=62');
+      const { MouseController } = await import('./mouse-controller.js?v=63');
       mouseController = new MouseController({
         scene: scene,
         starRing: starRing,
@@ -2188,7 +2203,7 @@ if (_loadingOverlay) {
 
 // 后台预加载 Three.js 相关模块（延迟 2 秒，避免和关键资源抢带宽）
 setTimeout(() => {
-  import('./three-scene.js?v=62').catch(() => {});
+  import('./three-scene.js?v=63').catch(() => {});
 }, 2000);
 
 console.log('[main] 事件绑定完成');
