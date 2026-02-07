@@ -3,7 +3,7 @@
 // ============================================
 
 import * as THREE from 'three';
-import { CONFIG } from './config.js?v=57';
+import { CONFIG } from './config.js?v=58';
 
 export class StarRing {
   constructor(cards) {

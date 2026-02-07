@@ -615,6 +615,7 @@
       border-radius: 30px;
       box-shadow: 0 0 20px rgba(123, 94, 167, 0.3), 0 0 40px rgba(123, 94, 167, 0.15);
       z-index: 20;
+      min-width: 380px;
     }
 
     .camera-fallback.visible {
@@ -668,6 +669,7 @@
       width: 100%;
       align-items: center;
       gap: 10px;
+      min-height: 42px;
     }
 
     .loading-progress.visible {
@@ -2117,6 +2119,7 @@
         padding: 20px 25px;
         width: 90%;
         max-width: 320px;
+        min-width: auto;
       }
 
       /* 手势引导 - 手机上调高 */
@@ -2137,6 +2140,10 @@
       .fallback-btn {
         width: 100%;
         padding: 14px 20px;
+      }
+
+      .loading-progress {
+        min-height: 106px;
       }
 
       /* 底部面板 */
@@ -2378,6 +2385,10 @@
       .fallback-btn {
         padding: 10px 15px;
         font-size: 0.85rem;
+      }
+
+      .loading-progress {
+        min-height: 38px;
       }
 
       .next-btn {
@@ -2927,6 +2938,6 @@
   }
   </script>
 
-  <script type="module" src="js/main.js?v=57"></script>
+  <script type="module" src="js/main.js?v=58"></script>
 </body>
 </html>
