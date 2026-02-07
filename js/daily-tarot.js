@@ -2,8 +2,8 @@
 // 每日一测 — 独立模块
 // ============================================
 
-import { CONFIG } from './config.js?v=70';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=70';
+import { CONFIG } from './config.js?v=71';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=71';
 
 console.log('[daily-tarot] 模块加载');
 
