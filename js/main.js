@@ -1921,9 +1921,11 @@ async function saveAsImage() {
         btnSaveImage.textContent = originalLabel;
         return;
       }
-      if (navigator.share && /iPhone|iPad/.test(navigator.userAgent)) {
-        navigator.share({ files: [new File([blob], 'tarot-reading.png', { type: 'image/png' })] })
-          .catch(() => {});
+      const file = new File([blob], 'tarot-reading.png', { type: 'image/png' });
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 768);
+
+      if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file] }).catch(() => {});
       } else {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');

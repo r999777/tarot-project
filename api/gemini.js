@@ -149,20 +149,21 @@ export default async function handler(req) {
     });
   }
 
-  // --- action: daily (streaming, check + count) ---
+  // --- action: daily (streaming, 独立计数，每天 1 次) ---
   if (action === 'daily') {
-    const usage = await getUsage(ip);
-    const remaining = MAX_FREE_USES - usage.count;
-
-    if (remaining <= 0) {
-      return new Response(JSON.stringify({ error: '体验次数已用完', remaining: 0 }), {
+    const dailyKey = `daily:${ip}`;
+    const used = await redis.get(dailyKey);
+    if (used) {
+      return new Response(JSON.stringify({ error: '今日已测过，明天再来吧' }), {
         status: 429,
         headers: { 'Content-Type': 'application/json' },
       });
     }
-
-    usage.count += 1;
-    await setUsage(ip, usage);
+    // 标记已用，TTL 到当天结束（最多 24 小时）
+    const now = new Date();
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const ttl = Math.ceil((endOfDay - now) / 1000);
+    await redis.set(dailyKey, 1, { ex: ttl });
 
     const url = `${GEMINI_BASE}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
     const geminiRes = await fetch(url, {
@@ -183,7 +184,6 @@ export default async function handler(req) {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'X-Remaining-Uses': String(MAX_FREE_USES - usage.count),
       },
     });
   }

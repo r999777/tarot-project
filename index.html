@@ -23,8 +23,8 @@
       --glow-ring: #F5E6C4;
 
       /* 字体 */
-      --font-title: 'Playfair Display', "Songti SC", "Noto Serif SC", "SimSun", serif;
-      --font-body: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --font-title: 'Playfair Display', "Songti SC", "Noto Serif SC", serif;
+      --font-body: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", sans-serif;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1910,7 +1910,7 @@
       margin-bottom: 12px;
     }
     .dcr-brand {
-      font-family: var(--font-display);
+      font-family: var(--font-title);
       font-size: 0.7rem;
       letter-spacing: 2px;
       opacity: 0.7;
@@ -1970,7 +1970,7 @@
       margin-bottom: 8px;
     }
     .dcr-freq-words {
-      font-family: var(--font-display);
+      font-family: var(--font-title);
       font-size: 1.1rem;
       line-height: 1.8;
       letter-spacing: 1px;
@@ -2043,7 +2043,7 @@
       margin: 10px 0;
     }
     .dcr-motto {
-      font-family: var(--font-display);
+      font-family: var(--font-title);
       font-size: 1rem;
       color: var(--dcr-accent);
       letter-spacing: 1px;
@@ -2092,10 +2092,6 @@
     .daily-save-btn:hover, .daily-copy-btn:hover {
       border-color: var(--btn-secondary);
       color: var(--btn-secondary);
-    }
-    .daily-home-btn {
-      margin-top: 16px;
-      margin-bottom: 40px;
     }
 
     /* 直觉练习页面 */
@@ -3354,8 +3350,6 @@
       <button class="daily-save-btn" id="daily-save-btn">保存图片</button>
       <button class="daily-copy-btn" id="daily-copy-btn">复制金句</button>
     </div>
-
-    <button class="btn btn-secondary daily-home-btn" id="btn-daily-home" style="display:none">返回首页</button>
   </div>
 
   <!-- 追加抽牌浮层 -->

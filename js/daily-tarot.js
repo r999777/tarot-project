@@ -21,7 +21,6 @@ const mainMenu = document.getElementById('main-menu');
 const dailyPage = document.getElementById('daily-page');
 const btnDaily = document.getElementById('btn-daily');
 const btnBackDaily = document.getElementById('btn-back-daily');
-const btnDailyHome = document.getElementById('btn-daily-home');
 
 const flipArea = document.getElementById('daily-flip-area');
 const dailyCard = document.getElementById('daily-card');
@@ -214,7 +213,6 @@ function renderResultCard(card, result, themeKey) {
   dailyLoading.style.display = 'none';
   resultCard.style.display = '';
   dailyActions.style.display = 'flex';
-  btnDailyHome.style.display = '';
 }
 
 // ============================================
@@ -247,16 +245,15 @@ async function saveImage() {
       }
 
       const file = new File([blob], 'daily-tarot.png', { type: 'image/png' });
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 768);
 
-      // 优先使用系统分享（移动端）
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({ files: [file] });
         } catch {
           // 用户取消分享，不报错
         }
       } else {
-        // 桌面端：下载
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -317,7 +314,6 @@ function resetPage() {
   dailyLoading.style.display = 'none';
   resultCard.style.display = 'none';
   dailyActions.style.display = 'none';
-  btnDailyHome.style.display = 'none';
   currentMotto = '';
 }
 
@@ -376,7 +372,6 @@ async function showDailyPage() {
     // 兜底文案
     dailyCardName.textContent = '今日气象信号微弱，请明日再试';
     dailyCardName.style.color = '#a05050';
-    btnDailyHome.style.display = '';
   }
 }
 
@@ -391,7 +386,6 @@ function hideDailyPage() {
 // ============================================
 btnDaily.addEventListener('click', showDailyPage);
 btnBackDaily.addEventListener('click', hideDailyPage);
-btnDailyHome.addEventListener('click', hideDailyPage);
 btnSave.addEventListener('click', saveImage);
 btnCopy.addEventListener('click', copyMotto);
 
