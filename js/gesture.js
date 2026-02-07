@@ -55,13 +55,13 @@ export class GestureController {
       // 初始化 MediaPipe Hands
       this.hands = new window.Hands({
         locateFile: (file) => {
-          return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`;
+          return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
         }
       });
 
       this.hands.setOptions({
         maxNumHands: 1,
-        modelComplexity: 0,
+        modelComplexity: 1,
         minDetectionConfidence: 0.7,
         minTrackingConfidence: 0.5
       });
@@ -89,7 +89,7 @@ export class GestureController {
       }
 
       const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js';
+      script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js';
       script.crossOrigin = 'anonymous';
       script.onload = () => {
         console.log('[gesture] MediaPipe Hands 加载完成');
