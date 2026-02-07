@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Error>
+  <Code>NoSuchKey</Code>
+  <Message>The specified key does not exist.</Message>
+  <RequestId>698675639F99E33333CCB3FD</RequestId>
+  <HostId>gosspublic.alicdn.com</HostId>
+  <Key>ossutil/v2/2.0.3/ossutil-2.0.3-mac-arm64.zip</Key>
+  <EC>0026-00000001</EC>
+  <RecommendDoc>https://api.aliyun.com/troubleshoot?q=0026-00000001</RecommendDoc>
+</Error>

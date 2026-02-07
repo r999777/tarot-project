@@ -5,16 +5,16 @@
 console.log('[main] 应用启动');
 
 // 导入模块
-import { TarotScene } from './three-scene.js?v=55';
-import { StarRing } from './star-ring.js?v=55';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=55';
-import { GestureController } from './gesture.js?v=55';
-import { CardAnimator } from './card-animations.js?v=55';
-import { DebugControls } from './debug-controls.js?v=55';
-import { StorageService } from './storage.js?v=55';
-import { AIService } from './ai-service.js?v=55';
-import { MouseController, isTouchDevice } from './mouse-controller.js?v=55';
-import { CONFIG } from './config.js?v=55';
+import { TarotScene } from './three-scene.js?v=56';
+import { StarRing } from './star-ring.js?v=56';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=56';
+import { GestureController } from './gesture.js?v=56';
+import { CardAnimator } from './card-animations.js?v=56';
+import { DebugControls } from './debug-controls.js?v=56';
+import { StorageService } from './storage.js?v=56';
+import { AIService } from './ai-service.js?v=56';
+import { MouseController, isTouchDevice } from './mouse-controller.js?v=56';
+import { CONFIG } from './config.js?v=56';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -212,22 +212,23 @@ function updateLoadingProgress(pct) {
   loadingProgressPct.textContent = pct + '%';
 }
 
-// 慢速递增：下载完成后模型编译阶段，每600ms +1%，最多到98%
+// 减速递增：下载完成后模型编译阶段，越接近99%越慢
 function startSlowTick() {
   if (_slowProgressTimer) return;
-  _slowProgressTimer = setInterval(() => {
-    if (_currentProgress < 98) {
+  function tick() {
+    if (_currentProgress < 99) {
       updateLoadingProgress(_currentProgress + 1);
-    } else {
-      clearInterval(_slowProgressTimer);
-      _slowProgressTimer = null;
+      // 85%以下每600ms，之后每多1%多300ms，让进度条持续缓慢移动
+      const delay = 600 + Math.max(0, _currentProgress - 85) * 300;
+      _slowProgressTimer = setTimeout(tick, delay);
     }
-  }, 600);
+  }
+  _slowProgressTimer = setTimeout(tick, 600);
 }
 
 function stopSlowTick() {
   if (_slowProgressTimer) {
-    clearInterval(_slowProgressTimer);
+    clearTimeout(_slowProgressTimer);
     _slowProgressTimer = null;
   }
 }
