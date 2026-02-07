@@ -5,11 +5,11 @@
 console.log('[main] 应用启动');
 
 // 导入轻量模块（不依赖 Three.js，首屏即加载）
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=65';
-import { GestureController } from './gesture.js?v=65';
-import { StorageService } from './storage.js?v=65';
-import { AIService } from './ai-service.js?v=65';
-import { CONFIG } from './config.js?v=65';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=66';
+import { GestureController } from './gesture.js?v=66';
+import { StorageService } from './storage.js?v=66';
+import { AIService } from './ai-service.js?v=66';
+import { CONFIG } from './config.js?v=66';
 
 // Three.js 相关模块延迟加载（进入占卜页时动态 import）
 // TarotScene, StarRing, CardAnimator, DebugControls, MouseController
@@ -66,6 +66,7 @@ const questionInput = document.getElementById('question-input');
 const btnStartReading = document.getElementById('btn-start-reading');
 const btnBackToMenu = document.getElementById('btn-back-to-menu');
 const useIntuitionCheckbox = document.getElementById('use-intuition');
+const btnRandomQuestion = document.getElementById('btn-random-question');
 
 // 是否注入直觉数据
 let useIntuition = true;
@@ -114,6 +115,7 @@ const resultReading = document.getElementById('result-reading');
 const followupInput = document.getElementById('followup-input');
 const btnFollowup = document.getElementById('btn-followup');
 const btnResultHome = document.getElementById('btn-result-home');
+const btnSaveImage = document.getElementById('btn-save-image');
 
 // 追加抽牌浮层 DOM 元素
 const followupDrawOverlay = document.getElementById('followup-draw-overlay');
@@ -122,6 +124,18 @@ const followupCanvasArea = document.getElementById('followup-canvas-area');
 const followupDrawSelected = document.getElementById('followup-draw-selected');
 const btnFollowupDone = document.getElementById('btn-followup-done');
 const btnFollowupCancel = document.getElementById('btn-followup-cancel');
+
+// 每日一测页面 DOM 元素
+const dailyPage = document.getElementById('daily-page');
+const btnDaily = document.getElementById('btn-daily');
+const btnBackDaily = document.getElementById('btn-back-daily');
+const btnDailyHome = document.getElementById('btn-daily-home');
+const dailyDate = document.getElementById('daily-date');
+const dailyCard = document.getElementById('daily-card');
+const dailyCardImage = document.getElementById('daily-card-image');
+const dailyCardName = document.getElementById('daily-card-name');
+const dailyLoading = document.getElementById('daily-loading');
+const dailyReading = document.getElementById('daily-reading');
 
 // 直觉练习页面 DOM 元素
 const intuitionPage = document.getElementById('intuition-page');
@@ -181,9 +195,9 @@ async function initScene() {
     { StarRing },
     { CardAnimator },
   ] = await Promise.all([
-    import('./three-scene.js?v=65'),
-    import('./star-ring.js?v=65'),
-    import('./card-animations.js?v=65'),
+    import('./three-scene.js?v=66'),
+    import('./star-ring.js?v=66'),
+    import('./card-animations.js?v=66'),
   ]);
 
   const container = document.getElementById('canvas-container');
@@ -200,7 +214,7 @@ async function initScene() {
 
   // 调试模式：启用相机和卡槽调整
   if (DEBUG_MODE) {
-    const { DebugControls } = await import('./debug-controls.js?v=65');
+    const { DebugControls } = await import('./debug-controls.js?v=66');
     const debugControls = new DebugControls(scene.camera, scene.renderer, cardAnimator);
     scene.setDebugControls(debugControls);
     console.log('[main] 调试模式已启用');
@@ -559,7 +573,7 @@ async function enableMouseMode(showHint = true) {
   // 创建鼠标控制器（动态加载）
   if (!mouseController && scene && starRing) {
     console.log('[main] 创建鼠标控制器');
-    const { MouseController } = await import('./mouse-controller.js?v=65');
+    const { MouseController } = await import('./mouse-controller.js?v=66');
     mouseController = new MouseController({
       scene: scene,
       starRing: starRing,
@@ -1179,6 +1193,14 @@ btnStartReading.addEventListener('click', startReadingFromQuestion);
 questionInput.addEventListener('input', () => {
   const hasContent = questionInput.value.trim().length > 0;
   btnStartReading.disabled = !hasContent;
+});
+
+// 随机问题
+btnRandomQuestion.addEventListener('click', () => {
+  const questions = CONFIG.RANDOM_QUESTIONS;
+  const q = questions[Math.floor(Math.random() * questions.length)];
+  questionInput.value = q;
+  questionInput.dispatchEvent(new Event('input'));
 });
 
 // 摄像头选择按钮
@@ -1849,9 +1871,72 @@ function resultToHome() {
     .forEach(el => el.remove());
 }
 
+// 保存结果页为图片
+async function saveAsImage() {
+  btnSaveImage.disabled = true;
+  btnSaveImage.textContent = '生成中...';
+
+  try {
+    // 临时展开 result-content 到全高度（不截断滚动区）
+    const content = document.querySelector('.result-content');
+    const originalStyle = content.style.cssText;
+    content.style.overflow = 'visible';
+    content.style.maxHeight = 'none';
+    content.style.flex = 'none';
+
+    // 隐藏底部追问区域和返回按钮（不截入图片）
+    const footer = document.querySelector('.result-footer');
+    const backBtn = document.getElementById('btn-back-result');
+    const footerDisplay = footer.style.display;
+    const backDisplay = backBtn ? backBtn.style.display : '';
+    footer.style.display = 'none';
+    if (backBtn) backBtn.style.display = 'none';
+
+    // html2canvas 渲染
+    const canvas = await html2canvas(resultPage, {
+      backgroundColor: '#1a1a2e',
+      scale: 2,
+      useCORS: true,
+      scrollY: -window.scrollY,
+    });
+
+    // 恢复样式
+    content.style.cssText = originalStyle;
+    footer.style.display = footerDisplay;
+    if (backBtn) backBtn.style.display = backDisplay;
+
+    // 底部追加水印
+    const ctx = canvas.getContext('2d');
+    ctx.font = '24px serif';
+    ctx.fillStyle = 'rgba(201, 169, 98, 0.5)';
+    ctx.textAlign = 'center';
+    ctx.fillText('Intuitive Tarot ✦ 星际塔罗师', canvas.width / 2, canvas.height - 20);
+
+    // 导出
+    canvas.toBlob(blob => {
+      if (navigator.share && /iPhone|iPad/.test(navigator.userAgent)) {
+        navigator.share({ files: [new File([blob], 'tarot-reading.png', { type: 'image/png' })] });
+      } else {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'tarot-reading.png';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+      btnSaveImage.disabled = false;
+      btnSaveImage.textContent = '保存图片';
+    }, 'image/png');
+  } catch (err) {
+    console.error('[main] 保存图片失败:', err);
+    btnSaveImage.disabled = false;
+    btnSaveImage.textContent = '保存图片';
+  }
+}
+
 // 结果页面事件绑定
 btnBackResult.addEventListener('click', hideResultPage);
 btnResultHome.addEventListener('click', resultToHome);
+btnSaveImage.addEventListener('click', saveAsImage);
 
 // 重试按钮 → 返回提问页面重新开始
 btnRetry.addEventListener('click', () => {
@@ -1984,7 +2069,7 @@ async function openFollowupDraw(count, reason) {
 
     // 设置鼠标控制器为追加模式（手势模式下也需要 mouseController 来操作浮层选牌）
     if (!mouseController && scene && starRing) {
-      const { MouseController } = await import('./mouse-controller.js?v=65');
+      const { MouseController } = await import('./mouse-controller.js?v=66');
       mouseController = new MouseController({
         scene: scene,
         starRing: starRing,
@@ -2201,9 +2286,101 @@ if (_loadingOverlay) {
   setTimeout(() => _loadingOverlay.remove(), 400);
 }
 
+// ============================================
+// 每日一测
+// ============================================
+
+function resetDailyPage() {
+  dailyCard.classList.remove('flipped', 'reversed');
+  dailyCardImage.style.backgroundImage = '';
+  dailyCardName.textContent = '';
+  dailyLoading.style.display = 'none';
+  dailyReading.innerHTML = '';
+}
+
+async function showDailyPage() {
+  mainMenu.classList.add('hidden');
+  resetDailyPage();
+  dailyPage.style.display = 'flex';
+
+  const now = new Date();
+  dailyDate.textContent = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
+
+  // 检查今日缓存
+  const cached = StorageService.getDailyReading();
+  if (cached) {
+    renderDailyResult(cached);
+    return;
+  }
+
+  // 随机抽牌
+  const cards = getAllCards();
+  if (!cards || cards.length === 0) {
+    dailyReading.innerHTML = '<p style="color: #e74c3c">牌数据未加载，请刷新页面重试</p>';
+    return;
+  }
+  const randomCard = cards[Math.floor(Math.random() * cards.length)];
+  const reversed = Math.random() < CONFIG.REVERSE_PROBABILITY;
+  const card = {
+    name: randomCard.name,
+    image: randomCard.image,
+    reversed
+  };
+
+  // 设置牌面
+  dailyCardImage.style.backgroundImage = `url(${getCardImageUrl(randomCard)})`;
+  if (reversed) dailyCard.classList.add('reversed');
+  dailyCardName.textContent = `${card.name}（${reversed ? '逆位' : '正位'}）`;
+
+  // 延迟翻牌
+  setTimeout(() => dailyCard.classList.add('flipped'), 500);
+
+  // 显示加载
+  dailyLoading.style.display = 'flex';
+
+  // 调用 AI
+  let fullText = '';
+  try {
+    await aiService.getDailyReading(card, (chunk) => {
+      fullText += chunk;
+      dailyReading.innerHTML = marked.parse(fullText);
+    });
+    dailyLoading.style.display = 'none';
+
+    // 缓存结果
+    StorageService.saveDailyReading({ card, text: fullText });
+  } catch (err) {
+    console.error('[main] 每日一测失败:', err);
+    dailyLoading.style.display = 'none';
+    dailyReading.innerHTML = `<p style="color: #e74c3c">获取今日运势失败: ${err.message}</p>`;
+  }
+}
+
+function renderDailyResult(data) {
+  const card = data.card;
+  const cardData = getAllCards().find(c => c.name === card.name);
+  if (cardData) {
+    dailyCardImage.style.backgroundImage = `url(${getCardImageUrl(cardData)})`;
+  }
+  if (card.reversed) dailyCard.classList.add('reversed');
+  dailyCardName.textContent = `${card.name}（${card.reversed ? '逆位' : '正位'}）`;
+  dailyCard.classList.add('flipped');
+  dailyLoading.style.display = 'none';
+  dailyReading.innerHTML = marked.parse(data.text);
+}
+
+function hideDailyPage() {
+  dailyPage.style.display = 'none';
+  mainMenu.classList.remove('hidden');
+}
+
+btnDaily.addEventListener('click', showDailyPage);
+btnBackDaily.addEventListener('click', hideDailyPage);
+btnDailyHome.addEventListener('click', hideDailyPage);
+
 // 后台预加载 Three.js 相关模块（延迟 2 秒，避免和关键资源抢带宽）
 setTimeout(() => {
-  import('./three-scene.js?v=65').catch(() => {});
+  import('./three-scene.js?v=66').catch(() => {});
 }, 2000);
 
 console.log('[main] 事件绑定完成');

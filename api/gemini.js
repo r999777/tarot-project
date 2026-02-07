@@ -149,6 +149,45 @@ export default async function handler(req) {
     });
   }
 
+  // --- action: daily (streaming, check + count) ---
+  if (action === 'daily') {
+    const usage = await getUsage(ip);
+    const remaining = MAX_FREE_USES - usage.count;
+
+    if (remaining <= 0) {
+      return new Response(JSON.stringify({ error: '体验次数已用完', remaining: 0 }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    usage.count += 1;
+    await setUsage(ip, usage);
+
+    const url = `${GEMINI_BASE}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
+    const geminiRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents, generationConfig, ...(systemInstruction && { systemInstruction }) }),
+    });
+
+    if (!geminiRes.ok) {
+      const errorText = await geminiRes.text();
+      return new Response(errorText, {
+        status: geminiRes.status,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    return new Response(geminiRes.body, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'X-Remaining-Uses': String(MAX_FREE_USES - usage.count),
+      },
+    });
+  }
+
   // --- action: followup-classify (non-streaming, no counting) ---
   if (action === 'followup-classify') {
     // 验证 token 状态必须是 used（已完成 reading）

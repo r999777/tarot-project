@@ -6,6 +6,7 @@ const STORAGE_KEYS = {
   SETTINGS: 'tarot_settings',
   INTUITION: 'tarot_intuition_records',
   HISTORY: 'tarot_reading_history',
+  DAILY: 'tarot_daily_reading',
 };
 
 // 默认设置
@@ -114,12 +115,32 @@ export const StorageService = {
     }
   },
 
+  // 每日一测缓存
+  getDailyReading() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.DAILY);
+      if (!data) return null;
+      const parsed = JSON.parse(data);
+      const today = new Date().toISOString().slice(0, 10);
+      return parsed.date === today ? parsed : null;
+    } catch { return null; }
+  },
+
+  saveDailyReading(reading) {
+    const data = {
+      date: new Date().toISOString().slice(0, 10),
+      ...reading
+    };
+    localStorage.setItem(STORAGE_KEYS.DAILY, JSON.stringify(data));
+  },
+
   // 清除所有数据
   clearAll() {
     try {
       localStorage.removeItem(STORAGE_KEYS.SETTINGS);
       localStorage.removeItem(STORAGE_KEYS.INTUITION);
       localStorage.removeItem(STORAGE_KEYS.HISTORY);
+      localStorage.removeItem(STORAGE_KEYS.DAILY);
       return true;
     } catch (error) {
       console.error('[storage] 清除数据失败:', error);

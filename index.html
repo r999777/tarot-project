@@ -1096,6 +1096,26 @@
       margin-bottom: 25px;
     }
 
+    .random-question-wrapper {
+      text-align: center;
+      margin: -15px 0 15px;
+    }
+    .random-question-btn {
+      background: none;
+      border: none;
+      color: var(--text-sub);
+      font-size: 0.85rem;
+      cursor: pointer;
+      padding: 6px 16px;
+      border-radius: 20px;
+      transition: all 0.3s ease;
+      font-family: var(--font-body);
+    }
+    .random-question-btn:hover {
+      color: var(--btn-secondary);
+      background: rgba(201, 169, 98, 0.1);
+    }
+
     .question-input {
       width: 100%;
       min-height: 100px;
@@ -1697,6 +1717,130 @@
       padding: 10px 30px;
     }
 
+    .result-footer-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+    .result-footer-actions .btn {
+      flex: 1;
+      max-width: 180px;
+    }
+
+    /* 每日一测页面 */
+    #daily-page {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 20px;
+      padding-top: 70px;
+      background: var(--bg-page);
+    }
+    .daily-back-btn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: none;
+      border: none;
+      color: var(--text-sub);
+      font-size: 1rem;
+      cursor: pointer;
+      z-index: 10;
+      font-family: var(--font-body);
+    }
+    .daily-header { text-align: center; margin-bottom: 20px; }
+    .daily-title {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: var(--btn-secondary);
+      margin: 0;
+    }
+    .daily-date {
+      color: var(--text-sub);
+      font-size: 0.9rem;
+      margin-top: 5px;
+    }
+    .daily-card-area { text-align: center; margin: 20px 0; }
+    .daily-card {
+      width: 120px;
+      height: 200px;
+      margin: 0 auto;
+      perspective: 800px;
+      cursor: pointer;
+    }
+    .daily-card-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transition: transform 0.8s ease;
+      transform-style: preserve-3d;
+    }
+    .daily-card.flipped .daily-card-inner {
+      transform: rotateY(180deg);
+    }
+    .daily-card-back, .daily-card-front {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .daily-card-back {
+      background: linear-gradient(135deg, var(--card-grad-start), var(--card-grad-end));
+      border: 2px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 25px var(--glow-ring);
+    }
+    .daily-card-back::after {
+      content: "✦";
+      color: var(--border-card);
+      font-size: 28px;
+      opacity: 0.8;
+    }
+    .daily-card-front {
+      transform: rotateY(180deg);
+    }
+    .daily-card-image {
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+    }
+    .daily-card.reversed .daily-card-image {
+      transform: rotate(180deg);
+    }
+    .daily-card-name {
+      margin-top: 10px;
+      font-size: 1rem;
+      color: var(--text-main);
+      font-family: var(--font-body);
+    }
+    .daily-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .daily-reading {
+      max-width: 600px;
+      width: 100%;
+      padding: 20px;
+      line-height: 1.8;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      font-family: var(--font-body);
+    }
+    .daily-home-btn {
+      margin-top: 20px;
+      margin-bottom: 40px;
+    }
+
     /* 直觉练习页面 */
     #intuition-page {
       display: none;
@@ -2210,6 +2354,15 @@
         width: 100%;
       }
 
+      .result-footer-actions {
+        flex-direction: column;
+        align-items: center;
+      }
+      .result-footer-actions .btn {
+        max-width: none;
+        width: 100%;
+      }
+
       /* 直觉练习页面 */
       .intuition-title {
         font-size: 1.5rem;
@@ -2694,6 +2847,7 @@
 
       <div class="btn-group">
         <button class="btn btn-primary" id="btn-reading">开始占卜</button>
+        <button class="btn btn-secondary" id="btn-daily">每日一测</button>
         <button class="btn btn-secondary" id="btn-intuition" style="display:none">直觉练习</button>
       </div>
     </div>
@@ -2717,6 +2871,10 @@
 
       <div class="question-input-wrapper">
         <textarea class="question-input" id="question-input" placeholder="例如：我的事业发展方向是什么？" rows="4"></textarea>
+      </div>
+
+      <div class="random-question-wrapper">
+        <button class="random-question-btn" id="btn-random-question">✦ 帮我想一个</button>
       </div>
 
       <div class="intuition-toggle" style="display:none">
@@ -2859,8 +3017,42 @@
         <input type="text" class="followup-input" id="followup-input" placeholder="还有什么想问的？">
         <button class="followup-btn" id="btn-followup" disabled>发送</button>
       </div>
-      <button class="btn btn-secondary result-home-btn" id="btn-result-home">返回首页</button>
+      <div class="result-footer-actions">
+        <button class="btn btn-secondary" id="btn-save-image">保存图片</button>
+        <button class="btn btn-secondary result-home-btn" id="btn-result-home">返回首页</button>
+      </div>
     </div>
+  </div>
+
+  <!-- 每日一测页面 -->
+  <div id="daily-page" style="display:none">
+    <button class="back-btn daily-back-btn" id="btn-back-daily">← 返回</button>
+
+    <div class="daily-header">
+      <h2 class="daily-title">今日运势</h2>
+      <div class="daily-date" id="daily-date"></div>
+    </div>
+
+    <div class="daily-card-area">
+      <div class="daily-card" id="daily-card">
+        <div class="daily-card-inner">
+          <div class="daily-card-back"></div>
+          <div class="daily-card-front">
+            <div class="daily-card-image" id="daily-card-image"></div>
+          </div>
+        </div>
+      </div>
+      <div class="daily-card-name" id="daily-card-name"></div>
+    </div>
+
+    <div class="daily-loading" id="daily-loading" style="display:none">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">感应今日星象...</div>
+    </div>
+
+    <div class="daily-reading" id="daily-reading"></div>
+
+    <button class="btn btn-secondary daily-home-btn" id="btn-daily-home">返回首页</button>
   </div>
 
   <!-- 追加抽牌浮层 -->
@@ -2949,6 +3141,8 @@
 
   <!-- Markdown 渲染库 -->
   <script src="vendor/marked.min.js"></script>
+  <!-- 截图库（保存对话为图片） -->
+  <script async src="vendor/html2canvas.min.js"></script>
   <script>
     // 安全配置：过滤 AI 返回内容中的原始 HTML，防止 XSS
     marked.setOptions({ breaks: true });
@@ -2966,7 +3160,7 @@
   }
   </script>
 
-  <script type="module" src="js/main.js?v=65"></script>
+  <script type="module" src="js/main.js?v=66"></script>
   <script>
     // 安全网：如果 main.js 10 秒内没加载完，自动隐藏遮罩防止卡死
     setTimeout(function() {

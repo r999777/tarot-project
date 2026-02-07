@@ -2,7 +2,7 @@
 // AI Service - Claude/Gemini API 调用
 // ============================================
 
-import { CONFIG } from './config.js?v=65';
+import { CONFIG } from './config.js?v=66';
 
 export class AIService {
   constructor() {
@@ -646,6 +646,63 @@ export class AIService {
       { role: 'user', content: userMessage }
     ];
     await this.callGeminiWithHistory(messages, systemPrompt, onChunk);
+  }
+
+  // 每日一测
+  async getDailyReading(card, onChunk) {
+    const now = new Date();
+    const systemPrompt = CONFIG.SYSTEM_PROMPT_DAILY
+      .replace('{current_date}', `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`);
+
+    const orientation = card.reversed ? '逆位' : '正位';
+    const userMessage = `今日抽到：${card.name}（${orientation}）\n\n请给出今日运势提示。`;
+
+    this.abortController = new AbortController();
+    const response = await fetch(CONFIG.API.GEMINI_PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'daily',
+        contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { temperature: 0.8, maxOutputTokens: 512 },
+      }),
+      signal: this.abortController.signal,
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const errorMsg = typeof err.error === 'string' ? err.error : err.error?.message || `API 错误: ${response.status}`;
+      throw new Error(errorMsg);
+    }
+
+    // 复用 SSE 解析逻辑
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) {
+              onChunk(text);
+            }
+          } catch (e) {
+            // 忽略解析错误
+          }
+        }
+      }
+    }
   }
 
   // 中止当前请求
