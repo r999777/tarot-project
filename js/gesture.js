@@ -130,8 +130,12 @@ export class GestureController {
   async detectLoop() {
     if (!this.isRunning) return;
 
-    if (this.videoElement.readyState >= 2) {
-      await this.hands.send({ image: this.videoElement });
+    try {
+      if (this.videoElement.readyState >= 2) {
+        await this.hands.send({ image: this.videoElement });
+      }
+    } catch (error) {
+      console.error('[gesture] 检测帧出错:', error);
     }
 
     requestAnimationFrame(() => this.detectLoop());

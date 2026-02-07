@@ -4,9 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>星际塔罗师</title>
-  <link rel="preconnect" href="https://fonts.googleapis.cn">
-  <link rel="preconnect" href="https://fonts.gstatic.cn" crossorigin>
-  <link href="https://fonts.googleapis.cn/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="fonts/playfair-display.css">
   <style>
     :root {
       /* 色彩系统 */
@@ -2867,7 +2865,7 @@
   </div>
 
   <!-- Markdown 渲染库 -->
-  <script src="https://registry.npmmirror.com/marked/15.0.4/files/marked.min.js"></script>
+  <script src="vendor/marked.min.js"></script>
   <script>
     // 安全配置：过滤 AI 返回内容中的原始 HTML，防止 XSS
     marked.setOptions({ breaks: true });
@@ -2879,11 +2877,12 @@
   <script type="importmap">
   {
     "imports": {
-      "three": "https://registry.npmmirror.com/three/0.160.0/files/build/three.module.js"
+      "three": "./vendor/three/build/three.module.js",
+      "three/": "./vendor/three/"
     }
   }
   </script>
 
-  <script type="module" src="js/main.js?v=37"></script>
+  <script type="module" src="js/main.js?v=38"></script>
 </body>
 </html>

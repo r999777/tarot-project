@@ -2,9 +2,9 @@
 // 调试控制器 - 用于调整相机和卡槽位置
 // ============================================
 
-import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
-import { CONFIG } from './config.js?v=29';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { CONFIG } from './config.js?v=33';
 
 export class DebugControls {
   constructor(camera, renderer, cardAnimator) {

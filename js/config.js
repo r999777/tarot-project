@@ -44,7 +44,7 @@ export const CONFIG = {
   REVERSE_PROBABILITY: 0.3,
 
   // 图片基础URL
-  CARD_IMAGE_BASE_URL: 'https://cdn.jsdelivr.net/gh/metabismuth/tarot-json@master/cards/',
+  CARD_IMAGE_BASE_URL: '/cards/',
 
   // API 配置
   API: {
