@@ -5,16 +5,16 @@
 console.log('[main] 应用启动');
 
 // 导入模块
-import { TarotScene } from './three-scene.js?v=53';
-import { StarRing } from './star-ring.js?v=53';
-import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=53';
-import { GestureController } from './gesture.js?v=53';
-import { CardAnimator } from './card-animations.js?v=53';
-import { DebugControls } from './debug-controls.js?v=53';
-import { StorageService } from './storage.js?v=53';
-import { AIService } from './ai-service.js?v=53';
-import { MouseController, isTouchDevice } from './mouse-controller.js?v=53';
-import { CONFIG } from './config.js?v=53';
+import { TarotScene } from './three-scene.js?v=54';
+import { StarRing } from './star-ring.js?v=54';
+import { loadTarotData, getAllCards, getCardImageUrl } from './tarot-data.js?v=54';
+import { GestureController } from './gesture.js?v=54';
+import { CardAnimator } from './card-animations.js?v=54';
+import { DebugControls } from './debug-controls.js?v=54';
+import { StorageService } from './storage.js?v=54';
+import { AIService } from './ai-service.js?v=54';
+import { MouseController, isTouchDevice } from './mouse-controller.js?v=54';
+import { CONFIG } from './config.js?v=54';
 
 // 调试模式开关 - 设为 true 启用相机和卡槽调整
 const DEBUG_MODE = false;
@@ -1135,8 +1135,8 @@ btnEnableCamera.addEventListener('click', () => {
   document.querySelector('.fallback-buttons').style.display = 'none';
   updateLoadingProgress(5);
   loadingProgress.classList.add('visible');
-  // 异步初始化（成功/失败在回调中处理）
-  initGesture();
+  // 延迟一帧让浏览器先渲染 5% 初始状态，CSS transition 再平滑过渡
+  requestAnimationFrame(() => initGesture());
 });
 
 btnUseMouse.addEventListener('click', () => {
