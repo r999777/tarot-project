@@ -226,7 +226,22 @@ async function saveImage() {
 
   try {
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 768);
-    const blob = await window.domtoimage.toBlob(resultCard, { scale: isMobile ? 1 : 2 });
+
+    // 滚到卡片顶部，确保完整可见
+    resultCard.scrollIntoView({ block: 'start' });
+    // 临时移除 overflow:hidden（防止截图被裁切）
+    const origOverflow = resultCard.style.overflow;
+    resultCard.style.overflow = 'visible';
+
+    const blob = await window.domtoimage.toBlob(resultCard, {
+      scale: isMobile ? 1 : 2,
+      width: resultCard.scrollWidth,
+      height: resultCard.scrollHeight,
+    });
+
+    // 恢复
+    resultCard.style.overflow = origOverflow;
+
     const blobUrl = URL.createObjectURL(blob);
 
     if (isMobile) {
@@ -263,6 +278,7 @@ async function saveImage() {
     btnSave.disabled = false;
     btnSave.textContent = originalText;
   } catch (err) {
+    resultCard.style.overflow = '';
     console.error('[daily-tarot] 截图失败:', err);
     alert('保存图片失败，请重试');
     btnSave.disabled = false;
